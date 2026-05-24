@@ -1,6 +1,6 @@
 # Net Worth Tracker
 
-A local-first personal net worth and portfolio tracker. All data is saved on your machine — no cloud, no login, no subscription, no analytics.
+A local-first personal net worth and portfolio tracker. All data is saved on your machine. No cloud, no login, no subscription, no analytics.
 
 Works out of the box with **free Yahoo Finance prices** — no API key required.
 

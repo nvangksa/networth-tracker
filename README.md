@@ -96,7 +96,7 @@ The key is stored locally in `data/portfolio.json` and never leaves your machine
 | European Stocks | Ticker.Exchange | SAP.DE, ASML.AS |
 | UK Stocks | Ticker.L | BARC.L, HSBA.L |
 | Crypto | SYMBOL-USD | BTC-USD, ETH-USD |
-| Commodities | GC=F (gold),  SI=F (silver) |
+| Commodities | GC=F (gold),  SI=F (silver) | GC=F
 
 The Add Asset modal has a ticker search box that auto-suggests symbols as you type.
 

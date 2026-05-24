@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { usePortfolio } from '../context/PortfolioContext.jsx'
 
 // Persistent reminder to back up the local data file. Local-first means there's

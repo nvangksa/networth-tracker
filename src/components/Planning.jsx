@@ -9,6 +9,7 @@ import CurrencyToggle from './CurrencyToggle.jsx'
 import AssetDetailModal from './modals/AssetDetailModal.jsx'
 import ExpenseEditModal from './modals/ExpenseEditModal.jsx'
 import SalaryStreamModal from './modals/SalaryStreamModal.jsx'
+import { FinancialHealthCards } from './FinancialHealth.jsx'
 
 const CLASS_LABEL = Object.fromEntries(ASSET_CLASSES.map(c => [c.value, c.label]))
 
@@ -22,7 +23,7 @@ const CLASS_LABEL = Object.fromEntries(ASSET_CLASSES.map(c => [c.value, c.label]
 export default function Planning({ onNavigate }) {
   const { data, holdings, netWorthStats, updateData } = usePortfolio()
   const cur = data.settings.baseCurrency
-  const [tab, setTab] = useState('retirement')
+  const [tab, setTab] = useState('health')
 
   return (
     <div>
@@ -38,6 +39,7 @@ export default function Planning({ onNavigate }) {
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
         {[
+          { id: 'health',     label: 'Financial Health' },
           { id: 'retirement', label: 'Retirement Income' },
           { id: 'rebalance',  label: 'Rebalancing' },
           { id: 'bondcalc',   label: 'Bond / Interest Calculator' },
@@ -50,6 +52,7 @@ export default function Planning({ onNavigate }) {
         ))}
       </div>
 
+      {tab === 'health'     && <FinancialHealthCards />}
       {tab === 'retirement' && <RetirementIncomePlanner data={data} holdings={holdings} cur={cur} onNavigate={onNavigate} />}
       {tab === 'rebalance'  && <RebalancingTool data={data} holdings={holdings} cur={cur} updateData={updateData} />}
       {tab === 'bondcalc'   && <BondInterestCalculator cur={cur} />}
@@ -766,7 +769,7 @@ function RetirementIncomePlanner({ data, holdings, cur, onNavigate }) {
                 {monthlyGap > 0 ? 'Income Gap' : 'Income Surplus'}
               </div>
               <div className={monthlyGap > 0 ? 'loss' : 'gain'} style={{ fontSize: 28, fontWeight: 700 }}>
-                {monthlyGap >= 0 ? '−' : '+'}{formatCurrency(Math.abs(monthlyGap), cur)}/mo
+                {monthlyGap > 0 ? '−' : monthlyGap < 0 ? '+' : ''}{formatCurrency(Math.abs(monthlyGap), cur)}/mo
               </div>
               <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 4 }}>
                 {monthlyGap > 0

@@ -179,14 +179,19 @@ export default function AssetDetailModal({ holding, onClose }) {
           )}
 
           {/* Meta notes / extras */}
-          {(holding.notes || holding.sector || holding.industry || holding.mortgageBalance != null) && (
+          {(holding.notes || holding.sector || holding.industry || (holding.class === 'property' && parseFloat(holding.mortgageBalance) > 0)) && (
             <div className="card card-sm" style={{ padding: 10, fontSize: 12, marginBottom: 14, background: 'var(--bg-secondary)' }}>
               {holding.sector && <div><strong>Sector:</strong> {holding.sector}{holding.industry && ` · ${holding.industry}`}</div>}
-              {holding.class === 'property' && holding.mortgageBalance != null && (
+              {holding.class === 'property' && parseFloat(holding.mortgageBalance) > 0 && (
                 <div><strong>Mortgage:</strong> {formatCurrency(parseFloat(holding.mortgageBalance) || 0, holding.currency)}</div>
               )}
               {holding.ownershipPct != null && holding.ownershipPct !== 100 && (
-                <div><strong>Ownership:</strong> {holding.ownershipPct.toFixed(1)}% (values scaled to your share)</div>
+                <div>
+                  <strong>Ownership:</strong> {holding.ownershipPct.toFixed(1)}%
+                  {(holding.class === 'business' || holding.class === 'private_equity')
+                    ? ' of the company (value above is your stake)'
+                    : ' (values scaled to your share)'}
+                </div>
               )}
               {holding.notes && <div style={{ marginTop: 4, color: 'var(--text-muted)' }}>{holding.notes}</div>}
             </div>

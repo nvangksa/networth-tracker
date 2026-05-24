@@ -225,6 +225,12 @@ export function parseCSV(text) {
   if (lines.length < 2) return { rows: [], errors: ['CSV must have a header row and at least one data row'] }
   const headerCells = splitCsvLine(lines[0]).map(h => h.trim().toLowerCase())
   // Header aliases — common broker exports use varied names
+  // Note: 'description' used to alias to BOTH `asset` and `notes`, which
+  // meant the same column got pulled into two different canonical fields —
+  // a broker export with `Description = "Apple Inc."` set both the asset
+  // name and the notes to "Apple Inc.". Map it to `asset` only; brokers
+  // overwhelmingly use Description for the security name. Use Notes/Memo
+  // columns for actual notes.
   const HEADER_ALIASES = {
     date: ['date', 'trade date', 'transaction date', 'datetime'],
     type: ['type', 'transaction type', 'action', 'side'],
@@ -235,7 +241,7 @@ export function parseCSV(text) {
     quantity: ['quantity', 'qty', 'shares', 'units', 'amount'],
     price: ['price', 'unit price', 'rate'],
     totalValue: ['total value', 'totalvalue', 'amount', 'total', 'value', 'gross amount'],
-    notes: ['notes', 'note', 'description', 'memo'],
+    notes: ['notes', 'note', 'memo'],
     tags: ['tags', 'tag', 'labels'],
   }
   const indexOf = (canonical) => {

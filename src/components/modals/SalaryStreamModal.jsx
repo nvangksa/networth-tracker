@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { usePortfolio } from '../../context/PortfolioContext.jsx'
-import { formatCurrency, getFxRate } from '../../utils/calculations.js'
+import { formatCurrency, getFxRate, localISO } from '../../utils/calculations.js'
 import TransactionModal from './TransactionModal.jsx'
 
 // Modal that lets users edit / add salary entries for a given source string,
@@ -44,10 +44,14 @@ export default function SalaryStreamModal({ source, onClose }) {
     return s + amt * fx
   }, 0)
   const accounts = [...new Set(matching.map(t => t.asset?.name).filter(Boolean))]
-  // Monthly avg over the last 12 months only
+  // Monthly avg over the last 12 months only.
+  // localISO so the 12-month boundary aligns with the user's calendar —
+  // transactions are stored as local-day strings (todayISO writes local
+  // components), so toISOString here would shift by ±1 day for users far
+  // from UTC and silently miss / double-count edge-of-window salaries.
   const monthlyAvg = useMemo(() => {
     const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 1)
-    const cutoffISO = cutoff.toISOString().slice(0, 10)
+    const cutoffISO = localISO(cutoff)
     let s = 0
     for (const t of matching) {
       if (t.date < cutoffISO) continue

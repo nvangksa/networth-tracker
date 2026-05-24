@@ -2,17 +2,31 @@ import { useState, useEffect } from 'react'
 
 const STORAGE_KEY = 'portfolio-theme'
 
+// Supported themes. Order matters for the sidebar's quick-toggle cycle —
+// clicking the sun/moon icon advances to the NEXT theme in this list.
+// We expose the full list so Settings can render a proper picker.
+export const THEMES = [
+  { id: 'light',  label: 'Paper Light',  description: 'Warm cream + forest green' },
+  { id: 'modern', label: 'Modern Light', description: 'Cool gray + indigo' },
+  { id: 'dark',   label: 'Dark',         description: 'Warm black + teal' },
+]
+
 // Shared theme state. Previously every useTheme() instance held its own
 // useState, so toggling theme in the sidebar didn't notify chart components —
 // their `key={theme}` prop never changed, Chart.js kept the old palette,
 // and the user saw a half-repainted UI until reload. Now a module-level
 // subscriber set fans out every change to every mounted useTheme() caller.
 let currentTheme = (() => {
-  try { return localStorage.getItem(STORAGE_KEY) || 'dark' } catch { return 'dark' }
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    // Guard against junk values from older builds — fall back to 'dark'.
+    return THEMES.some(t => t.id === stored) ? stored : 'dark'
+  } catch { return 'dark' }
 })()
 const subscribers = new Set()
 
 function applyTheme(next) {
+  if (!THEMES.some(t => t.id === next)) return
   currentTheme = next
   try { localStorage.setItem(STORAGE_KEY, next) } catch {}
   if (typeof document !== 'undefined') {
@@ -39,7 +53,14 @@ export function useTheme() {
   }, [])
 
   const setTheme = (next) => applyTheme(next)
-  const toggle = () => applyTheme(currentTheme === 'dark' ? 'light' : 'dark')
+  // Sidebar cycle: advance to the next theme in THEMES, wrapping around.
+  // Three taps cycles through all three. The Settings page exposes a
+  // proper picker for users who'd rather choose directly.
+  const toggle = () => {
+    const i = THEMES.findIndex(t => t.id === currentTheme)
+    const next = THEMES[(i + 1) % THEMES.length].id
+    applyTheme(next)
+  }
 
-  return { theme, setTheme, toggle }
+  return { theme, setTheme, toggle, themes: THEMES }
 }

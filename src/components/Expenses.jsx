@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { usePortfolio } from '../context/PortfolioContext.jsx'
 import {
-  formatCurrency, getFxRate, todayISO, CURRENCIES,
+  formatCurrency, getFxRate, todayISO, localISO, CURRENCIES,
   PASSIVE_INCOME_TYPES, INCOME_TYPES
 } from '../utils/calculations.js'
 import CurrencyToggle from './CurrencyToggle.jsx'
@@ -168,7 +168,10 @@ export default function Expenses({ navContext = {} }) {
   const salaryMonthly = useMemo(() => {
     const since = new Date()
     since.setMonth(since.getMonth() - 3)
-    const sinceISO = since.toISOString().slice(0, 10)
+    // localISO so the 3-month boundary aligns with the user's calendar day
+    // (transactions are stored with local-date strings, so toISOString here
+    // would mismatch by ±1 day for users far from UTC).
+    const sinceISO = localISO(since)
     let total = 0
     for (const t of data.transactions) {
       if (t.type !== 'salary') continue

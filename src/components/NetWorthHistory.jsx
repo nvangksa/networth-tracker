@@ -10,6 +10,12 @@ export default function NetWorthHistory() {
   const [timeframe, setTimeframe] = useState('monthly') // 'daily' | 'weekly' | 'monthly' | 'yearly' | 'all'
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [showExplain, setShowExplain] = useState(false)
+  // Snapshot management is rarely needed (auto-snapshot handles the common
+  // case) — collapsed by default so it doesn't add visual weight to the page.
+  // The previous "All Points" table dumped every reconstructed row alongside,
+  // which read as wall-of-numbers noise; here we only ever surface SAVED
+  // snapshots since reconstructed rows aren't deletable anyway.
+  const [showManage, setShowManage] = useState(false)
 
   const cur = data.settings.baseCurrency
   const { totalAssetsBase, totalLiabilitiesBase, netWorthBase } = netWorthStats
@@ -78,7 +84,7 @@ export default function NetWorthHistory() {
         <div>
           <div className="page-title">Net Worth History</div>
           <div className="page-subtitle">
-            {data.snapshots.length} saved snapshots · {sorted.length} total points (reconstructed from transactions)
+            {data.snapshots.length} saved snapshots · reconstructed back to your earliest transaction
           </div>
         </div>
         <CurrencyToggle />
@@ -201,73 +207,56 @@ export default function NetWorthHistory() {
 
       </div>
 
-      {/* All points: shows both reconstructed (transaction-derived) and saved
-          (manual/auto) snapshots. Reconstructed rows can't be deleted because
-          they come from transactions — to remove one, edit the underlying txn. */}
-      <div className="card">
-        <div className="card-header">
-          <span className="card-title">All Points</span>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-            {data.snapshots.length} saved · {sorted.length - data.snapshots.length} reconstructed
-          </span>
-        </div>
-        {sorted.length === 0 ? (
-          <div className="empty-state" style={{ padding: '24px 0' }}>
-            <p>Snapshots are saved automatically once per day when the app opens.</p>
-          </div>
-        ) : (
-          <div className="table-wrap" style={{ border: 'none' }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Source</th>
-                  <th className="text-right">Total Assets</th>
-                  <th className="text-right">Total Liabilities</th>
-                  <th className="text-right">Net Worth</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...sorted].reverse().map(snap => {
-                  const isSaved = !!data.snapshots.find(s => s.date === snap.date)
-                  return (
+      {/* Snapshot management — collapsed by default. Surfaces only SAVED
+          snapshots (manual + auto-daily) so users can delete a bad one if
+          needed. Reconstructed points aren't shown because they're derived
+          from transactions and edited by changing the underlying txn. */}
+      {data.snapshots.length > 0 && (
+        <div className="card" style={{ padding: '10px 14px', borderLeft: '3px solid var(--border)' }}>
+          <button
+            onClick={() => setShowManage(s => !s)}
+            className="btn btn-ghost btn-sm"
+            style={{ padding: 0, fontSize: 12, fontWeight: 600 }}
+          >
+            {showManage ? '▾' : '▸'} Manage saved snapshots ({data.snapshots.length})
+          </button>
+          {showManage && (
+            <div className="table-wrap" style={{ border: 'none', marginTop: 8 }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th className="text-right">Net Worth</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...data.snapshots].sort((a, b) => b.date.localeCompare(a.date)).map(snap => (
                     <tr key={snap.date}>
-                      <td style={{ color: 'var(--text-muted)' }}>{snap.date}</td>
-                      <td>
-                        <span
-                          className={`badge ${isSaved ? 'badge-deposit' : 'badge-revaluation'}`}
-                          style={{ fontSize: 10 }}
-                        >
-                          {isSaved ? 'Saved' : 'Reconstructed'}
-                        </span>
-                      </td>
-                      <td className="text-right fw-600">{formatCurrency(snap.totalAssets, cur, true)}</td>
-                      <td className={`text-right ${snap.totalLiabilities > 0 ? 'loss' : 'muted'}`}>
-                        {formatCurrency(snap.totalLiabilities, cur, true)}
+                      <td style={{ color: 'var(--text-muted)' }}>
+                        {snap.date}
+                        {snap.manual && (
+                          <span className="badge badge-deposit" style={{ fontSize: 10, marginLeft: 8 }}>Manual</span>
+                        )}
                       </td>
                       <td className={`text-right fw-600 ${snap.netWorth >= 0 ? '' : 'loss'}`}>
                         {formatCurrency(snap.netWorth, cur, true)}
                       </td>
-                      <td>
-                        {isSaved ? (
-                          <button
-                            className="btn btn-xs btn-danger"
-                            onClick={() => setConfirmDelete(snap)}
-                            title="Delete saved snapshot"
-                          >✕</button>
-                        ) : (
-                          <span style={{ fontSize: 10, color: 'var(--text-muted)' }} title="Reconstructed from transactions — edit the underlying transaction to change">—</span>
-                        )}
+                      <td className="text-right">
+                        <button
+                          className="btn btn-xs btn-danger"
+                          onClick={() => setConfirmDelete(snap)}
+                          title="Delete saved snapshot"
+                        >✕</button>
                       </td>
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {confirmDelete && (
         <div className="modal-backdrop">

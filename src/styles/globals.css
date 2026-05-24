@@ -1,6 +1,9 @@
-/* Inter — closest free equivalent to Wealthsimple's proprietary "TWK Everett".
-   Loaded from Google Fonts CDN with display=swap for fast first paint. */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap');
+/* Sans-serif system, Inter throughout. Fraunces was previously loaded for
+ * display headings but the new "Refined" visual system keeps everything in
+ * a single sans family — cleaner hierarchy via WEIGHT + SIZE rather than
+ * family contrast. Inter ships tabular-nums and a strong 700/800 weight
+ * range so big hero numbers still feel anchored without going serif. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -22,23 +25,45 @@
   --accent-dim: rgba(79, 190, 154, 0.14);
   --gain: #4FBE9A;
   --gain-dim: rgba(79, 190, 154, 0.14);
-  --loss: #FF6B5B;
-  --loss-dim: rgba(255, 107, 91, 0.14);
+  /* Softened loss tones: was #FF6B5B (alarm bright) → #E07A6E (intentional
+     warm coral). Reads as "loss" without screaming "error". */
+  --loss: #E07A6E;
+  --loss-dim: rgba(224, 122, 110, 0.14);
   --info: #7AA8F2;
   --info-dim: rgba(122, 168, 242, 0.14);
   --purple: #B89AF0;
   --orange: #F2A65A;
+  /* Currency/category palette — pastel-but-distinguishable. Higher hue
+     separation than the previous saturated primaries so each band is easy
+     to tell apart, but desaturated so the bar doesn't compete with the
+     rest of the UI. Indexed 0..7; consumed in JS via getComputedStyle or
+     directly as inline color list. */
+  --series-1: #8FB5D6;  /* dusty blue */
+  --series-2: #9CC4A8;  /* sage green */
+  --series-3: #E0A593;  /* peach */
+  --series-4: #C3A8DC;  /* lavender */
+  --series-5: #E0C886;  /* soft mustard */
+  --series-6: #D9A0AE;  /* dusty rose */
+  --series-7: #92BFB8;  /* muted teal */
+  --series-8: #B5A488;  /* warm taupe */
   --sidebar-width: 220px;
   --sidebar-collapsed: 60px;
   --header-h: 56px;
   --radius: 12px;
   --radius-sm: 6px;
+  /* Two-layer shadow: a tight close shadow for definition + a soft far one
+     for elevation. Replaces the old 1px border treatment when cards opt-in
+     to the borderless look. */
   --shadow: 0 8px 32px rgba(0,0,0,0.4);
+  --shadow-soft: 0 1px 2px rgba(0,0,0,0.10), 0 8px 24px rgba(0,0,0,0.18);
+  --shadow-lift: 0 4px 10px rgba(0,0,0,0.18), 0 18px 40px rgba(0,0,0,0.28);
   --transition: 0.18s ease;
   --chart-grid: rgba(255,247,239,0.06);
   --table-row-hover: rgba(255,247,239,0.025);
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-display: 'Fraunces', 'Inter', Georgia, serif;
+  /* Same family as body; display weight & letter-spacing carry hierarchy
+     instead of a serif/sans contrast. */
+  --font-display: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 /* Light mode — warm paper palette.
@@ -67,15 +92,73 @@
   --accent-dim: rgba(31, 108, 88, 0.10);
   --gain: #1F6C58;
   --gain-dim: rgba(31, 108, 88, 0.10);
-  --loss: #D94F3C;
-  --loss-dim: rgba(217, 79, 60, 0.10);
+  /* Softened loss for the warm paper palette: was #D94F3C (bright orange-red)
+     → #B85544 (intentional terracotta). Still clearly red, just calmer. */
+  --loss: #B85544;
+  --loss-dim: rgba(184, 85, 68, 0.10);
   --info: #2D4FB8;
   --info-dim: rgba(45, 79, 184, 0.10);
+  /* Pastel series palette tuned for the cream background — slightly darker
+     than dark-mode equivalents so they stay legible on the warmer surface. */
+  --series-1: #6E94B8;  /* dusty blue */
+  --series-2: #7CA589;  /* sage green */
+  --series-3: #C58779;  /* terracotta */
+  --series-4: #A18BC2;  /* lavender */
+  --series-5: #C9A86A;  /* mustard */
+  --series-6: #BF7F8E;  /* dusty rose */
+  --series-7: #72A09A;  /* muted teal */
+  --series-8: #9A8870;  /* warm taupe */
   /* Slightly warmer shadow tone to match the cream palette */
   --shadow: 0 6px 22px rgba(74, 60, 30, 0.07);
+  --shadow-soft: 0 1px 2px rgba(74, 60, 30, 0.06), 0 6px 18px rgba(74, 60, 30, 0.08);
+  --shadow-lift: 0 4px 10px rgba(74, 60, 30, 0.10), 0 14px 32px rgba(74, 60, 30, 0.14);
   --chart-grid: rgba(26, 27, 31, 0.07);
   --table-row-hover: rgba(26, 27, 31, 0.03);
 }
+
+/* ── Modern theme — cool gray + indigo accent ──────────────────────
+ * Third theme alongside Paper Light and Dark. For users who find the warm
+ * cream too editorial. Same component shapes; only the palette changes.
+ * Loss tone is a desaturated brick that holds up on the cool background.
+ */
+[data-theme="modern"] {
+  --bg: #F7F8FA;
+  --surface: #FFFFFF;
+  --card: #FFFFFF;
+  --card-hover: #F1F2F5;
+  --border: #E5E7EB;
+  --border-light: #D1D5DB;
+  --text: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
+  --accent: #4F46E5;
+  --accent-dim: rgba(79, 70, 229, 0.10);
+  --gain: #059669;
+  --gain-dim: rgba(5, 150, 105, 0.10);
+  --loss: #C2553F;
+  --loss-dim: rgba(194, 85, 63, 0.10);
+  --info: #2563EB;
+  --info-dim: rgba(37, 99, 235, 0.10);
+  /* Pastel-but-distinguishable palette tuned for the cool gray background. */
+  --series-1: #6B7CE0;  /* indigo-blue */
+  --series-2: #5BB59C;  /* mint */
+  --series-3: #E59A87;  /* peach */
+  --series-4: #A688E8;  /* lavender */
+  --series-5: #D9B870;  /* gold */
+  --series-6: #D77F95;  /* rose */
+  --series-7: #6FB5C2;  /* teal */
+  --series-8: #94A0AD;  /* slate */
+  --shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+  --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.05), 0 4px 14px rgba(15, 23, 42, 0.06);
+  --shadow-lift: 0 4px 10px rgba(15, 23, 42, 0.08), 0 16px 36px rgba(15, 23, 42, 0.12);
+  --chart-grid: rgba(15, 23, 42, 0.06);
+  --table-row-hover: rgba(15, 23, 42, 0.03);
+}
+
+[data-theme="modern"] .sidebar-logo-icon { color: #fff; }
+[data-theme="modern"] .btn-primary { color: #fff; }
+[data-theme="modern"] .modal-backdrop { background: rgba(15, 23, 42, 0.5); }
+[data-theme="modern"] select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E"); }
 
 [data-theme="light"] .sidebar-logo-icon { color: #000; }
 [data-theme="light"] .btn-primary { color: #fff; }
@@ -97,16 +180,52 @@ body {
   letter-spacing: -0.005em;
 }
 
-/* Display headings use Fraunces serif for the warm Wealthsimple editorial feel. */
+/* Headings rely on weight + size + letter-spacing for hierarchy, since the
+ * type family is the same as body. The slight negative tracking gives a more
+ * "display" feel without needing a different font. */
 .page-title, .modal-title, .card-title, h1, h2, h3 {
   font-family: var(--font-display);
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 .metric-value {
   font-family: var(--font-display);
-  font-weight: 500;
-  letter-spacing: -0.02em;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  font-variant-numeric: tabular-nums;
 }
+
+/* Hero number — Dashboard's Net Worth slot. Tabular numerals keep the
+ * digits aligned regardless of value; large weight + negative tracking
+ * makes Inter feel "display" instead of body. Sized larger now that it's
+ * sans (serif at 56px+ was too much, but sans at 56px sits comfortably). */
+.hero-number {
+  font-family: var(--font-display);
+  font-size: 56px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.0;
+  font-variant-numeric: tabular-nums;
+  word-break: normal;
+}
+@media (max-width: 720px) {
+  .hero-number { font-size: 40px; }
+}
+
+/* YoY indicator pill — sits below the hero number. Subtle tinted background
+ * with the gain/loss color, rounded fully for the "pill" feel. */
+.hero-yoy-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.hero-yoy-pill.gain { background: var(--gain-dim); color: var(--gain); }
+.hero-yoy-pill.loss { background: var(--loss-dim); color: var(--loss); }
 
 /* ── Layout ─────────────────────────────────────────── */
 #root { display: flex; height: 100vh; overflow: hidden; }
@@ -128,35 +247,45 @@ body {
   width: 100%;
 }
 
-/* ── Unified tile-style toggle (checkbox replacement) ─────────── */
-/* Use anywhere a binary on/off choice is needed. Wraps an <input type="checkbox" hidden>
-   and styled <span class="tile-toggle-box"> with optional label/meta. */
+/* ── Unified tile-style toggle (checkbox replacement) ───────────
+ * Used in Planning's retirement-income tiles + anywhere a binary on/off
+ * choice needs more presence than a vanilla checkbox. Updated to the
+ * Refined chip palette: checked = accent-dim background, no harsh yellow
+ * leftover from an earlier palette. */
 .tile-toggle {
   display: flex; align-items: center; gap: 10px;
-  padding: 8px 10px; border-radius: 6px;
-  border: 1px solid var(--border);
-  background: transparent;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--surface);
   cursor: pointer; user-select: none;
   font-size: 13px; color: var(--text);
-  transition: border-color var(--transition), background var(--transition);
+  transition: border-color var(--transition), background var(--transition), transform var(--transition);
 }
-.tile-toggle:hover { border-color: var(--border-light); }
+.tile-toggle:hover {
+  background: var(--card-hover);
+  transform: translateY(-1px);
+}
 .tile-toggle.checked {
   border-color: var(--accent);
-  background: rgba(252, 213, 53, 0.08);
+  background: var(--accent-dim);
 }
 .tile-toggle .tile-toggle-box {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0;
-  border: 1.5px solid var(--border);
+  width: 18px; height: 18px; border-radius: 5px; flex-shrink: 0;
+  border: 1.5px solid var(--border-light);
   background: transparent;
-  color: #0b0e11; font-size: 13px; font-weight: 700;
+  color: var(--bg); font-size: 13px; font-weight: 700;
   transition: all var(--transition);
 }
 .tile-toggle.checked .tile-toggle-box {
   border-color: var(--accent);
   background: var(--accent);
 }
+/* Dark / light themes flip the check glyph color so the ✓ stays legible
+ * on the accent fill. Modern theme uses indigo accent with white check. */
+[data-theme="modern"] .tile-toggle .tile-toggle-box { color: #fff; }
+[data-theme="light"]  .tile-toggle .tile-toggle-box { color: #fff; }
 .tile-toggle .tile-toggle-label { flex: 1; }
 .tile-toggle.checked .tile-toggle-label { font-weight: 600; }
 .tile-toggle .tile-toggle-meta {
@@ -166,24 +295,31 @@ body {
   position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0;
 }
 
-/* ── Currency toggle (used in page headers) ─────────── */
+/* ── Currency toggle (used in page headers) ───────────
+ * Pill-styled to match the chip family. Slightly more padding, fully
+ * rounded so it reads as a tonal "control" — not a hairline-bordered box. */
 .currency-toggle {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 8px 4px 10px;
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  transition: border-color var(--transition);
+  padding: 5px 10px 5px 12px;
+  background: var(--surface); border: 1px solid transparent;
+  border-radius: 999px;
+  transition: border-color var(--transition), background var(--transition);
 }
-.currency-toggle:hover { border-color: var(--border-light); }
+.currency-toggle:hover {
+  border-color: var(--border-light);
+  background: var(--card-hover);
+}
 .currency-toggle-label {
-  font-size: 11px; color: var(--text-muted);
-  text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;
+  font-size: 10px; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
 }
 .currency-toggle select {
   background: transparent; border: none; outline: none;
   color: var(--text); font-weight: 600; font-size: 13px;
   padding: 2px 18px 2px 2px; cursor: pointer;
+  border-radius: 0;
 }
+.currency-toggle select:focus { box-shadow: none; }
 
 /* ── Compact allocation: small donut + 2-col chip grid ───── */
 .alloc-compact {
@@ -216,6 +352,10 @@ body {
   gap: 4px 10px;
   align-content: start;
 }
+/* Allocation-by-class chip rows. These are read-only labels — they don't
+ * navigate anywhere on click — so we deliberately drop the background-darken
+ * on hover that used to be here. That hover affordance read as "clickable
+ * row" to users and misled them into expecting a deep-link. */
 .alloc-chip {
   display: grid;
   grid-template-columns: 8px 1fr auto auto;
@@ -225,9 +365,7 @@ body {
   border-radius: 4px;
   font-size: 12px;
   line-height: 1.2;
-  transition: background var(--transition);
 }
-.alloc-chip:hover { background: var(--card-hover); }
 .alloc-chip-dot { width: 8px; height: 8px; border-radius: 50%; }
 .alloc-chip-name {
   color: var(--text); font-weight: 500;
@@ -403,7 +541,9 @@ body {
   width: 34px; height: 34px;
   border-radius: 10px;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(252, 213, 53, 0.25);
+  /* Glow tint follows the active accent color — previously hard-coded to the
+     old yellow palette which clashed with every current theme. */
+  box-shadow: 0 2px 8px var(--accent-dim);
   transition: transform var(--transition);
 }
 .sidebar-logo-icon:hover { transform: scale(1.06) rotate(-2deg); }
@@ -506,12 +646,17 @@ body {
   margin-top: 2px;
 }
 
-/* ── Cards ─────────────────────────────────────────────── */
+/* ── Cards ───────────────────────────────────────────────
+ * Borderless treatment: dropped the 1px border in favor of a soft shadow
+ * (--shadow-soft). Cards now read as raised paper rather than outlined
+ * boxes, which suits the warm "Paper" palette and works equally well in
+ * Dark / Modern themes (each defines its own --shadow-soft tone). */
 .card {
   background: var(--card);
-  border: 1px solid var(--border);
+  border: none;
   border-radius: var(--radius);
   padding: 20px;
+  box-shadow: var(--shadow-soft);
 }
 
 .card-sm { padding: 14px 16px; }
@@ -539,17 +684,94 @@ body {
   margin-bottom: 24px;
 }
 
-.metric-card {
+/* Hero layout for the Dashboard top.
+ *   [HERO HERO] [Assets ] [Liab    ]
+ *   [HERO HERO] [Unrlzd ] [Realized]
+ * The hero card occupies 2 columns × 2 rows; the four supporting cards fill
+ * the remaining slots. Below ~960px the hero stretches full-width and the
+ * supporting cards fall into a single row of four.
+ */
+.metrics-hero {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  grid-auto-rows: minmax(0, auto);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.metric-card-hero {
+  grid-row: span 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 28px 32px;
   background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px 18px;
-  transition: border-color var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+/* Whisper of an accent radial in the top-right corner. Replaces the flat
+ * gradient background with a more atmospheric depth cue without going full
+ * "glass" — single color, low opacity, decorative not loud. */
+.metric-card-hero::before {
+  content: '';
+  position: absolute;
+  top: -120px; right: -120px;
+  width: 360px; height: 360px;
+  background: radial-gradient(circle, var(--accent-dim), transparent 65%);
+  pointer-events: none;
+  z-index: 0;
+}
+.metric-card-hero > * { position: relative; z-index: 1; }
+.metric-card-sm {
+  padding: 14px 16px;
+}
+.metric-card-sm .metric-value {
+  font-size: 18px;
+}
+.metric-card-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 22px;
+  /* Subtle accent rail on the left edge ties the banner to the action
+   * (clicking opens Income) without needing a heavy visual treatment. */
+  border-left: 3px solid var(--accent);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.metric-card-banner .metric-value {
+  font-size: 22px;
+  margin-top: 2px;
+}
+@media (max-width: 960px) {
+  .metrics-hero { grid-template-columns: 1fr 1fr; }
+  .metric-card-hero { grid-row: span 1; grid-column: span 2; }
+}
+@media (max-width: 540px) {
+  .metrics-hero { grid-template-columns: 1fr; }
+  .metric-card-hero { grid-column: span 1; }
 }
 
-.metric-card:hover { border-color: var(--border-light); }
+/* Borderless + soft shadow to match .card. ALL metric cards get a subtle
+ * lift on hover (not just clickable ones) — non-clickable cards still lift
+ * 1px so the surface feels alive and the visual depth from the Refined
+ * mockup carries through. Clickable cards lift further and gain a stronger
+ * shadow so the cursor change isn't the only affordance. */
+.metric-card {
+  background: var(--card);
+  border: none;
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-soft);
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+.metric-card:hover { transform: translateY(-1px); }
+
 .metric-card.clickable { cursor: pointer; }
-.metric-card.clickable:hover { border-color: var(--accent); transform: translateY(-1px); }
+.metric-card.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+}
 
 .metric-label {
   font-size: 11px;
@@ -561,11 +783,13 @@ body {
 }
 
 .metric-value {
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 700;
   color: var(--text);
-  line-height: 1.2;
+  line-height: 1.15;
   word-break: break-all;
+  letter-spacing: -0.015em;
+  font-variant-numeric: tabular-nums;
 }
 
 .metric-value.gain { color: var(--gain); }
@@ -598,7 +822,10 @@ body {
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-primary { background: var(--accent); color: #000; border-color: var(--accent); }
-.btn-primary:hover:not(:disabled) { background: #e6c130; border-color: #e6c130; }
+/* Hover darkens the accent by ~12% using brightness() filter — works across
+ * every theme without needing a hard-coded hover color (the old #e6c130 was
+ * a yellow from a previous palette and clashed with the new teal/indigo). */
+.btn-primary:hover:not(:disabled) { filter: brightness(0.92); }
 
 .btn-secondary { background: var(--card); color: var(--text); border-color: var(--border); }
 .btn-secondary:hover:not(:disabled) { background: var(--card-hover); border-color: var(--border-light); }
@@ -619,13 +846,13 @@ body {
 .table-wrap {
   overflow-x: auto;
   border-radius: var(--radius);
-  border: 1px solid var(--border);
   background: var(--card);
+  box-shadow: var(--shadow-soft);
 }
 /* When a table-wrap sits inside a .card the surrounding card already provides
-   the white panel — drop the inner border + background so it doesn't look
-   like a nested panel. */
-.card > .table-wrap { background: transparent; border: none; border-radius: 0; }
+   the panel — drop the inner background + shadow so it doesn't look like a
+   nested panel. */
+.card > .table-wrap { background: transparent; box-shadow: none; border-radius: 0; }
 
 table {
   width: 100%;
@@ -758,19 +985,23 @@ input, select, textarea {
   width: 100%;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   color: var(--text);
-  padding: 8px 10px;
+  padding: 9px 12px;
   font-size: 13px;
   font-family: inherit;
   outline: none;
-  transition: border-color var(--transition);
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
   appearance: none;
+}
+
+input:hover:not(:focus), select:hover:not(:focus), textarea:hover:not(:focus) {
+  border-color: var(--border-light);
 }
 
 input:focus, select:focus, textarea:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-dim);
+  box-shadow: 0 0 0 3px var(--accent-dim);
 }
 
 input::placeholder, textarea::placeholder { color: var(--text-muted); }
@@ -822,15 +1053,19 @@ textarea { resize: vertical; min-height: 60px; }
 
 .modal {
   background: var(--card);
-  border: 1px solid var(--border);
+  /* Borderless: a soft 1px tint reads as "panel" rather than "outlined dialog".
+   * The shadow does the elevation work; the hairline keeps the edge defined
+   * on light backgrounds where the shadow alone is too quiet. */
+  border: 1px solid var(--border-light);
   border-radius: var(--radius);
   width: 100%;
   max-width: 560px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-lift);
   animation: slideUp 0.18s ease;
 }
+[data-theme="dark"] .modal { border-color: transparent; }
 
 .modal-lg { max-width: 720px; }
 
@@ -873,37 +1108,110 @@ textarea { resize: vertical; min-height: 60px; }
 }
 .filters-bar select, .filters-bar input { width: auto; min-width: 120px; }
 
-/* ── Badges ──────────────────────────────────────────── */
+/* ── Badges / Chips ──────────────────────────────────────
+ * Pill-shaped chip pattern for both asset-class indicators and transaction
+ * type labels. The two roles share a base style; asset-class variants
+ * additionally render a colored dot before the label (via ::before) so
+ * they read as a discrete category indicator, not a generic tag.
+ *
+ * Color strategy: muted pastels, low-saturation backgrounds. The earlier
+ * palette used full-saturation primaries (bright blue/purple/orange) which
+ * competed with the rest of the UI — the Refined direction calls for
+ * indicators that sit quietly until you look at them. */
 .badge {
-  display: inline-flex; align-items: center;
-  padding: 2px 8px; border-radius: 20px;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
   font-size: 11px; font-weight: 600;
   white-space: nowrap;
 }
 
-.badge-stocks     { background: rgba(59,130,246,0.15); color: #3b82f6; }
-.badge-crypto     { background: rgba(168,85,247,0.15); color: #a855f7; }
-.badge-property   { background: rgba(249,115,22,0.15); color: #f97316; }
-.badge-commodities{ background: rgba(234,179,8,0.15);  color: #eab308; }
-.badge-cash       { background: rgba(14,203,129,0.15); color: #0ecb81; }
-.badge-bonds      { background: rgba(20,184,166,0.15); color: #14b8a6; }
-.badge-private_equity { background: rgba(244,63,94,0.15); color: #f43f5e; }
-.badge-collectibles { background: rgba(139,92,246,0.15); color: #8b5cf6; }
-.badge-vehicles   { background: rgba(236,72,153,0.15);  color: #ec4899; }
-.badge-jewelry    { background: rgba(217,70,239,0.15);  color: #d946ef; }
-.badge-art        { background: rgba(16,185,129,0.15);  color: #10b981; }
-.badge-business   { background: rgba(99,102,241,0.15);  color: #6366f1; }
-.badge-other      { background: rgba(132,142,156,0.15); color: #848e9c; }
+/* Leading dot for asset-class chips only (transaction-type badges below do
+ * NOT get a dot — they're inline action tags, not class categories). */
+.badge-stocks::before, .badge-crypto::before, .badge-property::before,
+.badge-commodities::before, .badge-cash::before, .badge-bonds::before,
+.badge-private_equity::before, .badge-collectibles::before,
+.badge-vehicles::before, .badge-jewelry::before, .badge-art::before,
+.badge-business::before, .badge-other::before, .badge-banknotes::before {
+  content: '';
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
 
-.badge-buy      { background: var(--gain-dim); color: var(--gain); }
-.badge-sell     { background: var(--loss-dim); color: var(--loss); }
-.badge-deposit  { background: var(--gain-dim); color: var(--gain); }
-.badge-withdrawal { background: var(--loss-dim); color: var(--loss); }
-.badge-revaluation { background: var(--info-dim); color: var(--info); }
-.badge-rental_income { background: var(--accent-dim); color: var(--accent); }
-.badge-dividend  { background: var(--accent-dim); color: var(--accent); }
-.badge-staking_reward { background: rgba(168,85,247,0.15); color: #a855f7; }
+/* Muted asset-class palette (dark-theme defaults). Each color picks one of
+ * the chart series tones so chips visually agree with the allocation chart
+ * (Property in the chip matches Property in the donut, etc.). */
+.badge-stocks         { background: rgba(143,181,214,0.12); color: #8fb5d6; }
+.badge-crypto         { background: rgba(195,168,220,0.12); color: #c3a8dc; }
+.badge-property       { background: rgba(224,165,147,0.12); color: #e0a593; }
+.badge-commodities    { background: rgba(224,200,134,0.14); color: #e0c886; }
+.badge-cash           { background: rgba(156,196,168,0.12); color: #9cc4a8; }
+.badge-bonds          { background: rgba(146,191,184,0.14); color: #92bfb8; }
+.badge-private_equity { background: rgba(217,160,174,0.14); color: #d9a0ae; }
+.badge-collectibles   { background: rgba(195,168,220,0.16); color: #c3a8dc; }
+.badge-vehicles       { background: rgba(224,165,147,0.16); color: #e0a593; }
+.badge-jewelry        { background: rgba(217,160,174,0.16); color: #d9a0ae; }
+.badge-art            { background: rgba(146,191,184,0.16); color: #92bfb8; }
+.badge-business       { background: rgba(181,164,136,0.16); color: #b5a488; }
+.badge-banknotes      { background: rgba(156,196,168,0.16); color: #9cc4a8; }
+.badge-other          { background: rgba(132,142,156,0.14); color: #a0a8b3; }
+
+/* Light theme — same palette but darker text tones so they stay legible
+ * against the warm cream background. The chart series for light mode are
+ * already darker; the chips re-use those exact tones. */
+[data-theme="light"] .badge-stocks         { background: rgba(110,148,184,0.10); color: #4f7298; }
+[data-theme="light"] .badge-crypto         { background: rgba(161,139,194,0.10); color: #7e63a3; }
+[data-theme="light"] .badge-property       { background: rgba(197,135,121,0.10); color: #a65a48; }
+[data-theme="light"] .badge-commodities    { background: rgba(201,168,106,0.12); color: #8b7236; }
+[data-theme="light"] .badge-cash           { background: rgba(124,165,137,0.10); color: #4d7359; }
+[data-theme="light"] .badge-bonds          { background: rgba(114,160,154,0.12); color: #44706b; }
+[data-theme="light"] .badge-private_equity { background: rgba(191,127,142,0.12); color: #8d4d5e; }
+[data-theme="light"] .badge-collectibles   { background: rgba(161,139,194,0.12); color: #7e63a3; }
+[data-theme="light"] .badge-vehicles       { background: rgba(197,135,121,0.12); color: #a65a48; }
+[data-theme="light"] .badge-jewelry        { background: rgba(191,127,142,0.14); color: #8d4d5e; }
+[data-theme="light"] .badge-art            { background: rgba(114,160,154,0.14); color: #44706b; }
+[data-theme="light"] .badge-business       { background: rgba(154,136,112,0.14); color: #6e5e44; }
+[data-theme="light"] .badge-banknotes      { background: rgba(124,165,137,0.14); color: #4d7359; }
+[data-theme="light"] .badge-other          { background: rgba(122,118,108,0.10); color: #6a655a; }
+
+/* Modern theme — cooler, slightly higher saturation to read on the white card */
+[data-theme="modern"] .badge-stocks         { background: rgba(107,124,224,0.10); color: #4855c6; }
+[data-theme="modern"] .badge-crypto         { background: rgba(166,136,232,0.10); color: #6f4ec8; }
+[data-theme="modern"] .badge-property       { background: rgba(229,154,135,0.10); color: #c46447; }
+[data-theme="modern"] .badge-commodities    { background: rgba(217,184,112,0.12); color: #8c6a1a; }
+[data-theme="modern"] .badge-cash           { background: rgba(91,181,156,0.10); color: #1b8a6e; }
+[data-theme="modern"] .badge-bonds          { background: rgba(111,181,194,0.12); color: #2d7a8a; }
+[data-theme="modern"] .badge-private_equity { background: rgba(215,127,149,0.12); color: #ad3f5c; }
+[data-theme="modern"] .badge-collectibles   { background: rgba(166,136,232,0.12); color: #6f4ec8; }
+[data-theme="modern"] .badge-vehicles       { background: rgba(229,154,135,0.12); color: #c46447; }
+[data-theme="modern"] .badge-jewelry        { background: rgba(215,127,149,0.14); color: #ad3f5c; }
+[data-theme="modern"] .badge-art            { background: rgba(111,181,194,0.14); color: #2d7a8a; }
+[data-theme="modern"] .badge-business       { background: rgba(148,160,173,0.14); color: #4a5666; }
+[data-theme="modern"] .badge-banknotes      { background: rgba(91,181,156,0.14); color: #1b8a6e; }
+[data-theme="modern"] .badge-other          { background: rgba(100,116,139,0.10); color: #4a5566; }
+
+/* Transaction-type badges — these signal the ACTION (buy/sell/etc.), not
+ * an asset class. They use the gain/loss/info/accent semantic tokens
+ * directly so they automatically participate in every theme without
+ * needing per-theme overrides. */
+.badge-buy             { background: var(--gain-dim); color: var(--gain); }
+.badge-sell            { background: var(--loss-dim); color: var(--loss); }
+.badge-deposit         { background: var(--gain-dim); color: var(--gain); }
+.badge-withdrawal      { background: var(--loss-dim); color: var(--loss); }
+.badge-revaluation     { background: var(--info-dim); color: var(--info); }
+.badge-rental_income   { background: var(--accent-dim); color: var(--accent); }
+.badge-dividend        { background: var(--accent-dim); color: var(--accent); }
+.badge-staking_reward  { background: rgba(195,168,220,0.14); color: #c3a8dc; }
+[data-theme="light"]  .badge-staking_reward { background: rgba(161,139,194,0.12); color: #7e63a3; }
+[data-theme="modern"] .badge-staking_reward { background: rgba(166,136,232,0.12); color: #6f4ec8; }
 .badge-interest_income { background: var(--gain-dim); color: var(--gain); }
+.badge-salary          { background: var(--accent-dim); color: var(--accent); }
+.badge-expense         { background: var(--loss-dim); color: var(--loss); }
+.badge-transfer        { background: var(--info-dim); color: var(--info); }
+.badge-liability_payment { background: var(--loss-dim); color: var(--loss); }
+.badge-mortgage_payment  { background: var(--loss-dim); color: var(--loss); }
+.badge-split           { background: var(--info-dim); color: var(--info); }
 
 /* ── Gains / losses text ─────────────────────────────── */
 .gain { color: var(--gain) !important; }
@@ -936,7 +1244,8 @@ textarea { resize: vertical; min-height: 60px; }
   margin-bottom: 16px;
   display: flex; align-items: flex-start; gap: 8px;
 }
-.alert-warn { background: rgba(252,213,53,0.1); border: 1px solid rgba(252,213,53,0.3); color: var(--accent); }
+/* Warn = accent-tinted (theme-aware); was hard-coded to the old yellow. */
+.alert-warn { background: var(--accent-dim); border: 1px solid transparent; color: var(--accent); }
 .alert-info { background: var(--info-dim); border: 1px solid rgba(59,130,246,0.3); color: var(--info); }
 .alert-error { background: var(--loss-dim); border: 1px solid rgba(246,70,93,0.3); color: var(--loss); }
 
@@ -981,22 +1290,45 @@ textarea { resize: vertical; min-height: 60px; }
 .price-inline-wrap { display: flex; align-items: center; gap: 4px; }
 .price-inline-input { width: 90px; padding: 3px 6px; font-size: 12px; }
 
-/* ── Property card ───────────────────────────────────── */
+/* ── Property card ─────────────────────────────────────
+ * Borderless + soft shadow to match the .card / .metric-card pattern. The
+ * earlier 1px-border-on-hover treatment read as "outline" rather than
+ * "elevated surface" — incompatible with the rest of the Refined system. */
 .property-card {
   background: var(--card);
-  border: 1px solid var(--border);
+  border: none;
   border-radius: var(--radius);
-  padding: 18px;
-  transition: border-color var(--transition);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-soft);
+  transition: transform var(--transition), box-shadow var(--transition);
+  cursor: pointer;
 }
-.property-card:hover { border-color: var(--border-light); }
+.property-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lift);
+}
 .property-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
-.property-name { font-size: 15px; font-weight: 700; }
+.property-name {
+  font-size: 16px; font-weight: 700;
+  letter-spacing: -0.01em;
+}
 .property-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-.property-metrics { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-top: 12px; }
-.property-metric-label { font-size: 11px; color: var(--text-muted); margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.04em; }
-.property-metric-value { font-size: 15px; font-weight: 700; word-break: break-word; line-height: 1.35; min-width: 0; }
-.property-metric-value .metric-sub-value { display: block; font-size: 11px; font-weight: 500; color: var(--text-muted); margin-top: 2px; margin-left: 0 !important; }
+.property-metrics { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; margin-top: 12px; }
+.property-metric-label {
+  font-size: 11px; color: var(--text-muted); margin-bottom: 4px;
+  text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;
+}
+.property-metric-value {
+  font-size: 16px; font-weight: 700;
+  word-break: break-word; line-height: 1.35; min-width: 0;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.property-metric-value .metric-sub-value {
+  display: block; font-size: 11px; font-weight: 500;
+  color: var(--text-muted); margin-top: 2px; margin-left: 0 !important;
+  letter-spacing: 0;
+}
 
 /* ── Income chart bars ────────────────────────────────── */
 .income-bar-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }

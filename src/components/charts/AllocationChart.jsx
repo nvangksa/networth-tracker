@@ -6,20 +6,26 @@ import { useTheme } from '../../hooks/useTheme.js'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 
+// Muted pastel palette matching the new asset-class chip tones in
+// globals.css (`.badge-stocks`, `.badge-crypto`, etc.). Keeping the donut
+// segments and the chip indicators in lockstep means "Property = peach"
+// reads consistently everywhere on the page. The earlier saturated
+// primaries (#3b82f6, #a855f7, #f97316…) competed with the rest of the UI.
 const CLASS_COLORS = {
-  stocks:        '#3b82f6',
-  crypto:        '#a855f7',
-  property:      '#f97316',
-  vehicles:      '#ec4899',
-  commodities:   '#eab308',
-  cash:          '#0ecb81',
-  bonds:         '#14b8a6',
-  private_equity:'#f43f5e',
-  jewelry:       '#d946ef',
-  art:           '#10b981',
-  collectibles:  '#8b5cf6',
-  business:      '#6366f1',
-  other:         '#848e9c',
+  stocks:        '#8fb5d6',  // dusty blue
+  crypto:        '#c3a8dc',  // lavender
+  property:      '#e0a593',  // peach
+  vehicles:      '#d9a0ae',  // dusty rose (differentiates from property)
+  commodities:   '#e0c886',  // mustard
+  cash:          '#9cc4a8',  // sage green
+  bonds:         '#92bfb8',  // muted teal
+  private_equity:'#d9a0ae',  // rose
+  jewelry:       '#d9a0ae',  // rose
+  art:           '#92bfb8',  // muted teal
+  collectibles:  '#c3a8dc',  // lavender
+  business:      '#b5a488',  // warm taupe
+  banknotes:     '#9cc4a8',  // sage
+  other:         '#a0a8b3',  // soft grey
 }
 
 export default function AllocationChart({ allocationByClass, baseCurrency }) {

@@ -3,6 +3,16 @@ import { usePortfolio } from '../context/PortfolioContext.jsx'
 import { CURRENCIES, formatCurrency } from '../utils/calculations.js'
 import FxCalculator from './FxCalculator.jsx'
 import ToggleTile from './ToggleTile.jsx'
+import { useTheme, THEMES } from '../hooks/useTheme.js'
+
+// Two-tone preview swatches for the theme picker. The first stop is the
+// page background, the second is the accent — gives an instant sense of
+// each theme's mood without rendering a full mockup.
+const THEME_PREVIEW = {
+  light:  { bg: '#F1ECDF', accent: '#1F6C58' },
+  modern: { bg: '#F7F8FA', accent: '#4F46E5' },
+  dark:   { bg: '#0F1115', accent: '#4FBE9A' },
+}
 
 export default function Settings() {
   const {
@@ -81,6 +91,7 @@ export default function Settings() {
       <div className="grid-2" style={{ gap: 20 }}>
         {/* Main settings */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <ThemePicker />
           <div className="card">
             <div className="card-header">
               <span className="card-title">API & Currency</span>
@@ -344,6 +355,69 @@ export default function Settings() {
           <p>All data stored in <code style={{ background: 'var(--surface)', padding: '1px 4px', borderRadius: 3 }}>data/portfolio.json</code> on your machine. No cloud sync, no login required.</p>
           <p style={{ marginTop: 8 }}>Prices via Yahoo Finance (free) + optional <a href="https://twelvedata.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>Twelve Data</a> · Built with React + Vite + Express</p>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// Theme picker — shows all three themes side-by-side with a two-tone swatch
+// per option (page background + accent). Selected theme gets an accent ring.
+// Clicking applies immediately so the user sees the change in-context; we
+// don't make them hit Save first because theme is a personal preference
+// that should be reversible with a single click.
+function ThemePicker() {
+  const { theme, setTheme } = useTheme()
+  return (
+    <div className="card">
+      <div className="card-header">
+        <span className="card-title">Appearance</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+        {THEMES.map(t => {
+          const active = theme === t.id
+          const swatch = THEME_PREVIEW[t.id]
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTheme(t.id)}
+              style={{
+                background: 'transparent',
+                border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                borderRadius: 'var(--radius-sm)',
+                padding: 10,
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'border-color var(--transition), transform var(--transition)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                color: 'var(--text)',
+              }}
+            >
+              {/* Two-tone preview: page bg on the left, accent on the right */}
+              <div style={{
+                height: 36, borderRadius: 4, overflow: 'hidden',
+                display: 'flex',
+              }}>
+                <div style={{ flex: 1, background: swatch.bg }} />
+                <div style={{ flex: 1, background: swatch.accent }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600 }}>
+                  {t.label}
+                  {active && <span style={{ color: 'var(--accent)', marginLeft: 6 }}>✓</span>}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+                  {t.description}
+                </div>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+      <div className="form-hint" style={{ marginTop: 10, fontSize: 11 }}>
+        Applies instantly. The sidebar toggle cycles through these in order.
       </div>
     </div>
   )

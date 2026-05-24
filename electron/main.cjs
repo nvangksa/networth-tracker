@@ -29,7 +29,13 @@ function createWindow (port) {
     },
   })
 
-  const url = isDev ? 'http://localhost:5173' : `http://localhost:${port}`
+  // Use 127.0.0.1 explicitly (not `localhost`) to match what the Express
+  // server binds to. On some Windows machines `localhost` resolves to ::1
+  // (IPv6) first, but the server binds 127.0.0.1 only — so the renderer's
+  // fetch('/api/...') would silently fail and prices/FX would never load.
+  // This was the cause of the "Yahoo Finance doesn't work on my computer"
+  // complaints from users running fresh Windows installs.
+  const url = isDev ? 'http://localhost:5173' : `http://127.0.0.1:${port}`
   mainWindow.loadURL(url)
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {

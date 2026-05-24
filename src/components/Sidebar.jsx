@@ -31,20 +31,50 @@ const ICONS = {
   menu:         <Icon d={<><path d="M3 6h18M3 12h18M3 18h18"/></>} />,
 }
 
-const NAV_ITEMS = [
-  { id: 'dashboard',    label: 'Dashboard'    },
-  { id: 'holdings',     label: 'Holdings'     },
-  { id: 'stocks',       label: 'Markets'      },
-  { id: 'property',     label: 'Property'     },
-  { id: 'cash',         label: 'Cash & Savings' },
-  { id: 'income',       label: 'Income'       },
-  { id: 'expenses',     label: 'Expenses'     },
-  { id: 'liabilities',  label: 'Liabilities'  },
-  { id: 'transactions', label: 'Transactions' },
-  { id: 'history',      label: 'Net Worth'    },
-  { id: 'reports',      label: 'Reports'      },
-  { id: 'planning',     label: 'Planning'     },
-  { id: 'settings',     label: 'Settings'     },
+// Nav grouped into thematic sections. Same 13 destinations, but a flat
+// 13-item list reads as a wall of links — grouping into 5 themed clusters
+// lets the eye scan by purpose first ("I want to look at my spending →
+// Cashflow") rather than memorizing positions in a list. Sections render
+// with a small uppercase caption between groups; in the collapsed sidebar
+// the captions disappear and only the icons show, so it doesn't add bulk.
+const NAV_SECTIONS = [
+  {
+    label: 'Overview',
+    items: [
+      { id: 'dashboard',    label: 'Dashboard'    },
+      { id: 'history',      label: 'Net Worth'    },
+    ],
+  },
+  {
+    label: 'Assets',
+    items: [
+      { id: 'holdings',     label: 'Holdings'     },
+      { id: 'stocks',       label: 'Markets'      },
+      { id: 'property',     label: 'Property'     },
+      { id: 'cash',         label: 'Cash & Savings' },
+    ],
+  },
+  {
+    label: 'Cashflow',
+    items: [
+      { id: 'income',       label: 'Income'       },
+      { id: 'expenses',     label: 'Expenses'     },
+      { id: 'liabilities',  label: 'Liabilities'  },
+    ],
+  },
+  {
+    label: 'Activity',
+    items: [
+      { id: 'transactions', label: 'Transactions' },
+    ],
+  },
+  {
+    label: 'Insights',
+    items: [
+      { id: 'reports',      label: 'Reports'      },
+      { id: 'planning',     label: 'Planning'     },
+    ],
+  },
 ]
 
 // Minimal monogram logo — solid accent circle with a clean serif "P" inside.
@@ -80,27 +110,76 @@ export default function Sidebar({ active, onNavigate, collapsed, onToggleCollaps
       </div>
 
       <nav className="sidebar-nav">
-        {NAV_ITEMS.map(item => (
-          <div
-            key={item.id}
-            className={`sidebar-nav-item${active === item.id ? ' active' : ''}`}
-            onClick={() => onNavigate(item.id)}
-            title={collapsed ? item.label : undefined}
-          >
-            <span className="nav-icon">{ICONS[item.id]}</span>
-            {!collapsed && <span className="nav-label">{item.label}</span>}
-          </div>
+        {NAV_SECTIONS.map((section, si) => (
+          <React.Fragment key={section.label}>
+            {/* Section caption — hidden when sidebar is collapsed. A small
+                top-margin separates the caption from the previous group
+                without needing a horizontal rule. */}
+            {!collapsed && (
+              <div
+                className="sidebar-nav-section"
+                style={{
+                  fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
+                  letterSpacing: '0.08em', color: 'var(--text-muted)',
+                  padding: '14px 16px 4px',
+                  marginTop: si === 0 ? 0 : 4,
+                }}
+              >
+                {section.label}
+              </div>
+            )}
+            {/* Collapsed mode: subtle divider line between groups so the
+                icon stack still parses as clusters at a glance. */}
+            {collapsed && si > 0 && (
+              <div style={{
+                height: 1, background: 'var(--border)',
+                margin: '6px 12px', opacity: 0.6,
+              }} />
+            )}
+            {section.items.map(item => (
+              <div
+                key={item.id}
+                className={`sidebar-nav-item${active === item.id ? ' active' : ''}`}
+                onClick={() => onNavigate(item.id)}
+                title={collapsed ? item.label : undefined}
+              >
+                <span className="nav-icon">{ICONS[item.id]}</span>
+                {!collapsed && <span className="nav-label">{item.label}</span>}
+              </div>
+            ))}
+          </React.Fragment>
         ))}
       </nav>
 
-      <div
-        className="sidebar-nav-item"
-        onClick={toggle}
-        title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-        style={{ borderTop: '1px solid var(--border)', marginTop: 'auto' }}
-      >
-        <span className="nav-icon">{theme === 'dark' ? ICONS.sun : ICONS.moon}</span>
-        {!collapsed && <span className="nav-label">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>}
+      {/* Settings + theme toggle sit at the bottom in their own small group
+          so they're predictable utility actions, not part of the navigation. */}
+      <div style={{ marginTop: 'auto', borderTop: '1px solid var(--border)' }}>
+        <div
+          className={`sidebar-nav-item${active === 'settings' ? ' active' : ''}`}
+          onClick={() => onNavigate('settings')}
+          title={collapsed ? 'Settings' : undefined}
+        >
+          <span className="nav-icon">{ICONS.settings}</span>
+          {!collapsed && <span className="nav-label">Settings</span>}
+        </div>
+        {/* Sidebar theme toggle cycles through all three themes (Paper Light
+            → Modern Light → Dark → Paper Light). Icon + label reflect the
+            current theme so users always see what's active rather than what
+            tapping will do. Settings has a proper picker for finer control. */}
+        <div
+          className="sidebar-nav-item"
+          onClick={toggle}
+          title={`Theme: ${
+            theme === 'dark' ? 'Dark' : theme === 'modern' ? 'Modern Light' : 'Paper Light'
+          } — click to cycle`}
+        >
+          <span className="nav-icon">{theme === 'dark' ? ICONS.moon : ICONS.sun}</span>
+          {!collapsed && (
+            <span className="nav-label">
+              {theme === 'dark' ? 'Dark' : theme === 'modern' ? 'Modern' : 'Paper'}
+            </span>
+          )}
+        </div>
       </div>
 
       {!collapsed && (

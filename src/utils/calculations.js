@@ -4,20 +4,25 @@ export const MANUAL_CLASSES = ['property', 'private_equity', 'collectibles', 'bo
 export const DEPRECIATING_CLASSES = ['vehicles'] // default depreciation applied
 export const CASH_CLASS = 'cash'
 
+// Common first — when a user opens "Add Asset" the four most-likely classes
+// (cash, stocks, crypto, property) sit at the top; everything else follows.
+// The order also dictates the alphabetical-ish grouping inside the asset
+// selector dropdown across the app, so we keep cash-first to match how most
+// users will register their first asset (a checking account).
 export const ASSET_CLASSES = [
+  { value: 'cash',          label: 'Cash & Savings',    icon: '💵' },
   { value: 'stocks',        label: 'Stocks',            icon: '📈' },
   { value: 'crypto',        label: 'Crypto',            icon: '🪙' },
   { value: 'property',      label: 'Property',          icon: '🏠' },
-  { value: 'vehicles',      label: 'Vehicles',          icon: '🚗', defaultDepreciation: 15 },
-  { value: 'commodities',   label: 'Commodities',       icon: '🪨' },
-  { value: 'cash',          label: 'Cash & Savings',    icon: '💵' },
-  { value: 'banknotes',     label: 'Bank Notes',        icon: '💴' },
   { value: 'bonds',         label: 'Bonds & Fixed Income', icon: '📜' },
+  { value: 'commodities',   label: 'Commodities',       icon: '🪨' },
+  { value: 'vehicles',      label: 'Vehicles',          icon: '🚗', defaultDepreciation: 15 },
   { value: 'private_equity',label: 'Private Equity',    icon: '🏢' },
-  { value: 'jewelry',       label: 'Jewelry & Watches', icon: '💎' },
+  { value: 'business',      label: 'Business',          icon: '🏪' },
   { value: 'art',           label: 'Art',               icon: '🖼️' },
   { value: 'collectibles',  label: 'Collectibles',      icon: '🎨' },
-  { value: 'business',      label: 'Business',          icon: '🏪' },
+  { value: 'jewelry',       label: 'Jewelry & Watches', icon: '💎' },
+  { value: 'banknotes',     label: 'Bank Notes',        icon: '💴' },
   { value: 'other',         label: 'Other',             icon: '📦' },
 ]
 
@@ -57,6 +62,52 @@ export const INCOME_TYPES = ['rental_income', 'dividend', 'staking_reward', 'int
 export const PASSIVE_INCOME_TYPES = ['rental_income', 'dividend', 'staking_reward', 'interest_income']
 
 export const CURRENCIES = ['USD','IDR','SGD','EUR','GBP','JPY','AUD','CAD']
+
+// Best-effort currency guess from the browser locale. The onboarding
+// wizard uses this to pre-select a sensible default on first run so the
+// user doesn't have to scroll a list just to confirm "yes, USD".
+//
+// We use Intl.Locale to read the region, then map it. For locales we don't
+// recognize the function returns null — the wizard falls back to USD.
+//
+// Currencies we restrict ourselves to are the eight in CURRENCIES above:
+// USD / IDR / SGD / EUR / GBP / JPY / AUD / CAD. Anything outside this set
+// (e.g. INR, KRW) falls back to USD because the FX layer can't yet display
+// totals in unsupported base currencies anyway — better to suggest a
+// supported default than auto-pick something that breaks.
+const REGION_TO_CURRENCY = {
+  US: 'USD',
+  ID: 'IDR',
+  SG: 'SGD',
+  GB: 'GBP',
+  IE: 'EUR', AT: 'EUR', BE: 'EUR', DE: 'EUR', ES: 'EUR', FI: 'EUR',
+  FR: 'EUR', GR: 'EUR', IT: 'EUR', LU: 'EUR', NL: 'EUR', PT: 'EUR',
+  EE: 'EUR', LV: 'EUR', LT: 'EUR', SK: 'EUR', SI: 'EUR', CY: 'EUR',
+  MT: 'EUR', HR: 'EUR',
+  JP: 'JPY',
+  AU: 'AUD',
+  CA: 'CAD',
+}
+
+export function guessBaseCurrency() {
+  try {
+    // Prefer Intl.Locale().region when available — modern, exact.
+    const lang = (typeof navigator !== 'undefined' && navigator.language) || 'en-US'
+    let region = null
+    if (typeof Intl !== 'undefined' && Intl.Locale) {
+      try {
+        region = new Intl.Locale(lang).region || null
+      } catch { /* malformed locale string */ }
+    }
+    // Fallback: parse the trailing "-XX" off the BCP-47 tag manually.
+    if (!region) {
+      const m = lang.match(/-([A-Z]{2})$/i)
+      if (m) region = m[1].toUpperCase()
+    }
+    if (region && REGION_TO_CURRENCY[region]) return REGION_TO_CURRENCY[region]
+  } catch { /* ignore, fall through */ }
+  return 'USD'
+}
 
 export function getTransactionTypesForClass(assetClass) {
   return TRANSACTION_TYPES.filter(t => t.classes.includes(assetClass))
@@ -139,7 +190,12 @@ export function calculateAssetHolding(asset, allTransactions, pricesCache, fxCac
         realizedPnLNative += qty * price - withdrawnCost
         quantity = Math.max(0, quantity - qty)
         totalCostNative = Math.max(0, totalCostNative - withdrawnCost)
-        hasSold = true
+        // Only non-cash positions are "sold out" when emptied. A cash account
+        // that briefly hits zero is still an open account — the user will
+        // deposit into it again. Without this gate, an emptied cash account
+        // got priceSource='sold' / currentPrice=0 and disappeared from the
+        // sold-out heuristics, plus showed a confusing "Sold" badge in detail.
+        if (asset.class !== CASH_CLASS) hasSold = true
         break
       }
       case 'revaluation': {
@@ -270,15 +326,28 @@ export function calculateAssetHolding(asset, allTransactions, pricesCache, fxCac
     }
   }
 
-  // For manual assets, manualPrice/revaluation represents total value — treat qty as 1.
-  // BUT: if the asset has been sold out (hasSold && quantity===0), it's a closed
-  // position. Do NOT virtualize qty=1 — the value must go to zero so the asset
-  // disappears from active pages and shows up only in Realized P&L.
+  // For manual assets, manualPrice/revaluation represents TOTAL value — treat
+  // qty as 1 regardless of the underlying quantity. Without this, a user with
+  // 10 collectibles revalued to $8000 saw currentValueNative = 10 × 8000 =
+  // $80,000 instead of $8000. The prior guard only forced qty=1 when
+  // quantity===0 (the "ghost asset / no buy txn" case) and silently broke
+  // for any manual asset with quantity > 1.
+  //
+  // 'depreciated' is exempt because that branch already computes currentPrice
+  // as per-unit (depreciated / quantity) when quantity > 0 — multiplying by
+  // quantity there gives the correct total. We still force qty=1 for
+  // depreciated when quantity===0 to handle the ghost-asset case.
+  //
+  // Sold-out positions (hasSold && quantity===0) skip virtualization so their
+  // value collapses to zero — they belong in Realized P&L, not active pages.
   let effectiveQty = quantity
   const isSoldOut = hasSold && quantity === 0
-  if (MANUAL_CLASSES.includes(asset.class) && quantity === 0 && !isSoldOut &&
-      (priceSource === 'revaluation' || priceSource === 'manual' || priceSource === 'depreciated') && currentPrice > 0) {
-    effectiveQty = 1
+  if (MANUAL_CLASSES.includes(asset.class) && !isSoldOut && currentPrice > 0) {
+    if (priceSource === 'revaluation' || priceSource === 'manual') {
+      effectiveQty = 1
+    } else if (priceSource === 'depreciated' && quantity === 0) {
+      effectiveQty = 1
+    }
   }
   if (isSoldOut) {
     currentPrice = 0
@@ -295,21 +364,28 @@ export function calculateAssetHolding(asset, allTransactions, pricesCache, fxCac
   // Default 1 (full ownership). Affects value, cost, P&L, income — NOT quantity
   // (quantity stays the raw underlying count) and NOT mortgage balance (user
   // should enter their share of the mortgage directly).
+  //
+  // Exception: for `business` and `private_equity`, the user enters their OWN
+  // stake's value directly (investment amount or share-count × per-share). The
+  // ownership % is informational metadata that describes what slice of the
+  // company those numbers represent — so we don't double-scale.
   const ownershipRaw = asset.ownershipPct
   const ownership = (ownershipRaw === undefined || ownershipRaw === null || ownershipRaw === '' || isNaN(parseFloat(ownershipRaw)))
     ? 1
     : Math.max(0, parseFloat(ownershipRaw) / 100)
+  const ownershipScales = asset.class !== 'business' && asset.class !== 'private_equity'
+  const scale = ownershipScales ? ownership : 1
 
-  const ownedValueNative = currentValueNative * ownership
-  const ownedCostNative = totalCostNative * ownership
-  const ownedUnrealizedNative = unrealizedPnLNative * ownership
-  const ownedRealizedNative = realizedPnLNative * ownership
+  const ownedValueNative = currentValueNative * scale
+  const ownedCostNative = totalCostNative * scale
+  const ownedUnrealizedNative = unrealizedPnLNative * scale
+  const ownedRealizedNative = realizedPnLNative * scale
 
   const currentValueBase = ownedValueNative * rate
   const costBasisBase = ownedCostNative * rate
   const unrealizedPnLBase = ownedUnrealizedNative * rate
   const realizedPnLBase = ownedRealizedNative * rate
-  const totalIncomeNative = incomeItems.reduce((s, i) => s + (i.amount || 0), 0) * ownership
+  const totalIncomeNative = incomeItems.reduce((s, i) => s + (i.amount || 0), 0) * scale
   const totalIncomeBase = totalIncomeNative * rate
 
   // Property net equity (mortgage is NOT scaled — user enters their own share)
@@ -546,10 +622,15 @@ export function getProjectedAnnualIncome(transactions, assets, fxCache, baseCurr
   // used calendar-month subtraction (which varies 89–92 days) and a fixed
   // ×4 multiplier — close but not quite annual. Pinning to exactly 90 days
   // and a 365/90 factor makes the projection consistent month-to-month.
+  //
+  // Use localISO so the cutoff aligns to the user's local calendar — txn.date
+  // values are written as local-day strings (todayISO uses local components),
+  // so toISOString here would shift the window by ±1 day for users far from
+  // UTC and silently miss / double-count edge-of-window transactions.
   const WINDOW_DAYS = 90
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() - WINDOW_DAYS)
-  const cutoffISO = cutoff.toISOString().slice(0, 10)
+  const cutoffISO = localISO(cutoff)
   let total = 0
   for (const txn of transactions) {
     if (!INCOME_TYPES.includes(txn.type)) continue
@@ -597,6 +678,19 @@ export function getRealizedPnLPerSale(transactions, assets, fxCache, baseCurrenc
       // same → avg cost falls. Without this a later sell looks like 100%
       // profit on the earned tokens.
       const qty = parseFloat(txn.quantity) || 0
+      // Reopen tracking when staking rebuilds a previously-closed position
+      // — otherwise daysHeld is computed against the prior closed-out buy
+      // date, inflating longTerm flags on freshly-earned tokens.
+      if (pos.qty <= 0 && qty > 0) pos.firstAcquired = txn.date
+      pos.qty += qty
+    } else if (txn.type === 'dividend' && txn.reinvest) {
+      // DRIP: dividend auto-reinvested into additional shares at zero
+      // ADDITIONAL cost (the dividend itself is the cost — already income-
+      // tagged). Mirrors calculateAssetHolding so a later sell prices
+      // against the correct DRIP-diluted avg cost. Without this, qty here
+      // lagged the calculation engine and realized P&L diverged.
+      const qty = parseFloat(txn.quantity) || 0
+      if (pos.qty <= 0 && qty > 0) pos.firstAcquired = txn.date
       pos.qty += qty
     } else if ((txn.type === 'interest_income' || txn.type === 'salary') && asset.class === 'cash') {
       // For CASH, these txns are stored with `quantity: 1, price: amount`
@@ -838,7 +932,9 @@ export function annualizedReturn(startValue, endValue, years) {
 // badge instead of the misleading asset-class badge).
 export function getIncomeStreamsByAsset(assets, transactions, fxCache, baseCurrency, holdings) {
   const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 1)
-  const cutoffISO = cutoff.toISOString().slice(0, 10)
+  // localISO so the 12-month window matches the local-calendar dates stored
+  // on transactions (todayISO writes local-day strings).
+  const cutoffISO = localISO(cutoff)
   const INCOME = ['rental_income', 'dividend', 'staking_reward', 'interest_income', 'salary']
   const groups = {}
   for (const t of transactions) {

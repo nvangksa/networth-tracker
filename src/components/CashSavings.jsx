@@ -4,6 +4,7 @@ import { formatCurrency, TXN_SHORT, getFxRate, projectCompoundGrowth } from '../
 import AssetModal from './modals/AssetModal.jsx'
 import TransactionModal from './modals/TransactionModal.jsx'
 import AssetDetailModal from './modals/AssetDetailModal.jsx'
+import AssetDeleteModal from './modals/AssetDeleteModal.jsx'
 import CurrencyToggle from './CurrencyToggle.jsx'
 
 const CASH_TXN_TYPES = [
@@ -32,6 +33,10 @@ export default function CashSavings() {
   const [confirmDeleteAsset, setConfirmDeleteAsset] = useState(null)
   const [confirmDeleteTxn, setConfirmDeleteTxn] = useState(null)
   const [detailHolding, setDetailHolding] = useState(null)
+  // Carries the prefilled withdrawal payload when the user picks "Withdraw
+  // first" in the delete dialog — opens the TransactionModal with the full
+  // remaining balance ready to record.
+  const [txnPrefill, setTxnPrefill] = useState(null)
   const [search, setSearch] = useState('')
   const [assetFilter, setAssetFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
@@ -341,21 +346,24 @@ export default function CashSavings() {
         <TransactionModal transaction={editingTxn} onClose={() => setEditingTxn(null)} />
       )}
       {confirmDeleteAsset && (
-        <div className="modal-backdrop">
-          <div className="modal" style={{ maxWidth: 400 }}>
-            <div className="modal-header">
-              <span className="modal-title">Delete Account</span>
-              <button className="modal-close" onClick={() => setConfirmDeleteAsset(null)}>×</button>
-            </div>
-            <div className="modal-body">
-              <p>Delete <strong>{confirmDeleteAsset.name}</strong> and all of its activity? You can undo this from the toast that appears below.</p>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setConfirmDeleteAsset(null)}>Cancel</button>
-              <button className="btn btn-danger" onClick={() => { deleteAsset(confirmDeleteAsset.id); setConfirmDeleteAsset(null) }}>Delete</button>
-            </div>
-          </div>
-        </div>
+        <AssetDeleteModal
+          holding={confirmDeleteAsset}
+          onClose={() => setConfirmDeleteAsset(null)}
+          onSellInstead={({ type, quantity, price }) => {
+            setTxnPrefill({
+              assetId: confirmDeleteAsset.id,
+              type,
+              quantity,
+              price,
+              totalValue: quantity * price,
+            })
+            setConfirmDeleteAsset(null)
+          }}
+          onDelete={() => { deleteAsset(confirmDeleteAsset.id); setConfirmDeleteAsset(null) }}
+        />
+      )}
+      {txnPrefill && (
+        <TransactionModal prefill={txnPrefill} onClose={() => setTxnPrefill(null)} />
       )}
       {confirmDeleteTxn && (
         <div className="modal-backdrop">

@@ -12,7 +12,7 @@ Works out of the box with **free Yahoo Finance prices** — no API key required.
 
 Head to the [**Releases**](../../releases) page and download the Windows installer:
 
-**`Net Worth Tracker Setup 1.0.0.exe`**
+**`Net Worth Tracker Setup 1.1.0.exe`**
 
 Install it, open it, done. Your data is stored in your OS user-data folder and survives app reinstalls.
 

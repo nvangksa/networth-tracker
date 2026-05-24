@@ -4,6 +4,14 @@ import {
   INCOME_TYPES, getTransactionTypesForClass, ASSET_CLASSES,
   todayISO, formatCurrency, getFxRate, generateId,
 } from '../../utils/calculations.js'
+import { getRecents, setRecents, RECENT_KEYS } from '../../utils/recents.js'
+
+// Classes where the asset is always a single discrete item (1 house, 1 car,
+// 1 painting, 1 ring). For these, a "Quantity" field is meaningless noise —
+// collapse the qty + per-unit price pair into a single price field and store
+// qty=1 internally so cost-basis math (qty × price) keeps working. Mirrors
+// SINGLE_UNIT_CLASSES in AssetModal.jsx.
+const SINGLE_UNIT_CLASSES = ['property', 'vehicles', 'art', 'jewelry']
 
 const DEFAULTS = {
   assetId: '', type: 'buy', date: todayISO(),
@@ -32,11 +40,36 @@ const DEFAULTS = {
   source: '',
 }
 
-export default function TransactionModal({ transaction, preselectedAssetId, preselectedType, onClose }) {
+export default function TransactionModal({ transaction, preselectedAssetId, preselectedType, prefill, onClose }) {
   const { data, addTransaction, editTransaction, allUsedTags } = usePortfolio()
   const isEdit = !!transaction
   const [form, setForm] = useState(() => {
     if (isEdit) return { ...DEFAULTS, ...transaction, tags: transaction.tags || [] }
+    // `prefill` is for "log again" — a brand-new transaction with most fields
+    // copied from an existing one. We strip id/transferGroupId (must be
+    // freshly generated for the new pair) and linkedExpenseId (the old txn
+    // was created by an Expense entry; a manual re-log shouldn't be tied to
+    // that same expense — otherwise deleting the expense would also wipe the
+    // re-logged copy). Force date to today.
+    if (prefill) {
+      const {
+        id: _id,
+        transferGroupId: _tg,
+        linkedExpenseId: _le,
+        ...rest
+      } = prefill
+      const base = {
+        ...DEFAULTS,
+        ...rest,
+        tags: prefill.tags || [],
+        date: todayISO(),
+        // Stringify numeric fields so the controlled inputs render cleanly
+        quantity: rest.quantity != null ? String(rest.quantity) : '',
+        price: rest.price != null ? String(rest.price) : '',
+        totalValue: rest.totalValue != null ? String(rest.totalValue) : '',
+      }
+      return base
+    }
     const base = { ...DEFAULTS, assetId: preselectedAssetId || '', type: preselectedType || 'buy' }
     // For a property sell, prefill qty=1 so the user only needs to type the sale price
     if (preselectedType === 'sell' && preselectedAssetId) {
@@ -44,6 +77,20 @@ export default function TransactionModal({ transaction, preselectedAssetId, pres
       if (a && (a.class === 'property' || ['business','art','collectibles','jewelry','vehicles'].includes(a.class))) {
         base.quantity = '1'
       }
+    }
+    // Pull persisted "last used" values so recurring entries don't require
+    // re-typing the same source / destination every time. Only applied when
+    // the field would otherwise be blank — never overwrite an explicit prop.
+    const recents = getRecents()
+    if (base.type === 'salary' && !base.source && recents[RECENT_KEYS.employer]) {
+      base.source = recents[RECENT_KEYS.employer]
+    }
+    if (base.type === 'transfer' && !base.transferToAssetId && recents[RECENT_KEYS.transferToAssetId]) {
+      // Only honor the recent destination if it still exists AND isn't the
+      // same as the source — otherwise the modal would block submit.
+      const recentTo = recents[RECENT_KEYS.transferToAssetId]
+      const recentToAsset = data?.assets?.find(a => a.id === recentTo)
+      if (recentToAsset && recentTo !== base.assetId) base.transferToAssetId = recentTo
     }
     return base
   })
@@ -85,15 +132,29 @@ export default function TransactionModal({ transaction, preselectedAssetId, pres
   // recomputing `qty * price` here would zero totalValue out (the underlying
   // bug that caused every expense / liability_payment / mortgage_payment to
   // persist with totalValue = 0 and rely on `|| price` fallbacks downstream).
+  //
+  // Also skip for DRIP dividends: `price` is the TOTAL cash dividend received,
+  // `quantity` is the # of shares reinvested — so `qty × price` is nonsense
+  // (e.g. 0.4 shares × $50 dividend = $20, understating the $50 income and
+  // corrupting the reinvest-price display = totalValue / qty). For DRIP we
+  // mirror price into totalValue so amount = totalVal || price downstream
+  // gives the correct dividend figure.
   useEffect(() => {
     const OUTFLOW = new Set(['expense', 'liability_payment', 'mortgage_payment'])
     if (OUTFLOW.has(form.type)) return
+    if (form.type === 'dividend' && form.reinvest) {
+      const price = parseFloat(form.price)
+      if (!isNaN(price)) {
+        setForm(f => ({ ...f, totalValue: String(price) }))
+      }
+      return
+    }
     const qty = parseFloat(form.quantity)
     const price = parseFloat(form.price)
     if (!isNaN(qty) && !isNaN(price)) {
       setForm(f => ({ ...f, totalValue: String((qty * price).toFixed(6)) }))
     }
-  }, [form.quantity, form.price, form.type])
+  }, [form.quantity, form.price, form.type, form.reinvest])
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
 
@@ -155,22 +216,40 @@ export default function TransactionModal({ transaction, preselectedAssetId, pres
     // basis math attributes 100% of the over-sold proceeds as profit, and
     // cash balances can also go effectively negative on paper.
     if (!isEdit && (form.type === 'sell' || form.type === 'withdrawal' || form.type === 'transfer' || form.type === 'expense' || form.type === 'liability_payment')) {
-      const owned = (data.transactions || [])
+      // Replay transactions in chronological order so a stock split (which
+      // multiplies the running quantity) is applied BEFORE any later sell —
+      // otherwise a 4-for-1 split + selling 350 of the now-400 shares
+      // erroneously trips this guard against the pre-split 100. Mirror the
+      // same case list calculateAssetHolding uses so the two stay in sync.
+      const sorted = [...(data.transactions || [])]
         .filter(t => t.assetId === form.assetId)
-        .reduce((acc, t) => {
-          const q = parseFloat(t.quantity) || 0
-          const tv = parseFloat(t.totalValue) || q * (parseFloat(t.price) || 0)
-          if (t.type === 'buy' || t.type === 'deposit') return acc + q
-          if (t.type === 'sell' || t.type === 'withdrawal') return Math.max(0, acc - q)
-          if (t.type === 'staking_reward') return acc + q
-          if (selectedAsset?.class === 'cash' && (t.type === 'salary' || t.type === 'interest_income')) {
-            return acc + (tv || (parseFloat(t.price) || 0))
-          }
-          if (t.type === 'expense' || t.type === 'liability_payment' || t.type === 'transfer') {
-            return Math.max(0, acc - (tv || q * (parseFloat(t.price) || 0) || (parseFloat(t.price) || 0)))
-          }
-          return acc
-        }, 0)
+        .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+      const owned = sorted.reduce((acc, t) => {
+        const q = parseFloat(t.quantity) || 0
+        const tv = parseFloat(t.totalValue) || q * (parseFloat(t.price) || 0)
+        if (t.type === 'buy' || t.type === 'deposit') return acc + q
+        if (t.type === 'sell' || t.type === 'withdrawal') return Math.max(0, acc - q)
+        if (t.type === 'staking_reward') return acc + q
+        // DRIP dividends reinvest at zero cost — the txn carries the new
+        // share count in `quantity`. Without this a sell after a DRIP would
+        // be blocked even though calculateAssetHolding gave the user those
+        // shares.
+        if (t.type === 'dividend' && t.reinvest) return acc + q
+        // Stock splits multiply the running quantity by the ratio (stored in
+        // `price`). Skipping this branch left the guard's view of "owned"
+        // stuck at the pre-split share count.
+        if (t.type === 'split') {
+          const ratio = parseFloat(t.price) || 0
+          return ratio > 0 ? acc * ratio : acc
+        }
+        if (selectedAsset?.class === 'cash' && (t.type === 'salary' || t.type === 'interest_income')) {
+          return acc + (tv || (parseFloat(t.price) || 0))
+        }
+        if (t.type === 'expense' || t.type === 'liability_payment' || t.type === 'transfer') {
+          return Math.max(0, acc - (tv || q * (parseFloat(t.price) || 0) || (parseFloat(t.price) || 0)))
+        }
+        return acc
+      }, 0)
       const requested = (form.type === 'expense' || form.type === 'liability_payment' || form.type === 'transfer')
         ? (totalVal || qty * price || price)
         : qty
@@ -204,6 +283,24 @@ export default function TransactionModal({ transaction, preselectedAssetId, pres
       payload.source = String(form.source).trim()
     }
 
+    // Persist a few "last used" fields so recurring entries don't require
+    // re-typing on the next open. Read on mount, written here on submit.
+    function persistRecents() {
+      const updates = {}
+      if (form.type === 'salary' && form.source) updates[RECENT_KEYS.employer] = form.source
+      if (INCOME_TYPES.includes(form.type) && selectedAsset?.class === 'cash') {
+        updates[RECENT_KEYS.depositToAssetId] = form.assetId
+      }
+      if (['expense', 'liability_payment', 'mortgage_payment'].includes(form.type)) {
+        updates[RECENT_KEYS.paidFromAssetId] = form.assetId
+      }
+      if (form.type === 'transfer') {
+        updates[RECENT_KEYS.transferFromAssetId] = form.assetId
+        if (form.transferToAssetId) updates[RECENT_KEYS.transferToAssetId] = form.transferToAssetId
+      }
+      setRecents(updates)
+    }
+
     if (isEdit) {
       editTransaction(transaction.id, payload)
     } else {
@@ -235,6 +332,7 @@ export default function TransactionModal({ transaction, preselectedAssetId, pres
           tags: ['transfer'],
           transferGroupId: groupId,
         })
+        persistRecents()
         onClose()
         return
       }
@@ -270,6 +368,7 @@ export default function TransactionModal({ transaction, preselectedAssetId, pres
         addTransaction(payload)
       }
     }
+    persistRecents()
     onClose()
   }
 
@@ -346,41 +445,98 @@ export default function TransactionModal({ transaction, preselectedAssetId, pres
             </div>
 
             {/* Amount fields */}
-            {(isBuySell || isStaking) && (
-              <div className="form-row">
-                <div className="form-group mb-0">
-                  <label>
-                    {selectedAsset?.class === 'stocks'     ? '# of Shares *' :
-                     selectedAsset?.class === 'crypto'     ? '# of Coins *' :
-                     selectedAsset?.class === 'cash'       ? 'Amount *' :
-                     selectedAsset?.class === 'bonds'      ? 'Face Value / Units *' :
-                     selectedAsset?.class === 'commodities'? '# of Units (oz/barrels) *' :
-                     'Quantity *'}
-                  </label>
-                  <input
-                    key={`qty-${form.assetId}-${form.type}`}
-                    type="number" step="any" min="0"
-                    value={form.quantity}
-                    onChange={e => set('quantity', e.target.value)}
-                    placeholder="e.g. 10"
-                    required={isBuySell}
-                    autoFocus={!isEdit && !!form.assetId}
-                  />
-                </div>
-                {!isStaking && (
-                  <div className="form-group mb-0">
-                    <label>Price per {selectedAsset?.class === 'cash' ? 'Unit' : 'Share'} ({selectedAsset?.currency || '—'}) *</label>
+            {(isBuySell || isStaking) && (() => {
+              const isSingleUnit = SINGLE_UNIT_CLASSES.includes(selectedAsset?.class)
+              // Cash flows (deposit / withdrawal / transfer) collapse the
+              // qty + per-unit price pair into a single Amount field. Price
+              // is always 1 for cash, so asking the user to type it is just
+              // a footgun — leaving it blank silently saved transactions
+              // with price=0 / totalValue=0, which then corrupted realized
+              // P&L (withdrawal at price=0 attributes 100% of the withdrawn
+              // amount as a realized loss against avg cost = 1).
+              const isCashFlow = selectedAsset?.class === 'cash'
+                && (form.type === 'deposit' || form.type === 'withdrawal' || form.type === 'transfer')
+              if (isCashFlow) {
+                return (
+                  <div className="form-group">
+                    <label>Amount ({selectedAsset?.currency || '—'}) *</label>
                     <input
+                      key={`amt-${form.assetId}-${form.type}`}
                       type="number" step="any" min="0"
-                      value={form.price}
-                      onChange={e => set('price', e.target.value)}
-                      placeholder={selectedAsset?.class === 'cash' ? '1' : 'e.g. 185.50'}
-                      required={isBuySell}
+                      value={form.quantity}
+                      onChange={e => {
+                        set('quantity', e.target.value)
+                        set('price', '1')
+                        set('totalValue', e.target.value)
+                      }}
+                      placeholder="0.00"
+                      required
+                      autoFocus={!isEdit && !!form.assetId}
                     />
                   </div>
-                )}
-              </div>
-            )}
+                )
+              }
+              if (isSingleUnit && isBuySell) {
+                return (
+                  <div className="form-group">
+                    <label>
+                      {form.type === 'sell' ? 'Sale Price' : 'Purchase Price'} ({selectedAsset?.currency || '—'}) *
+                    </label>
+                    <input
+                      key={`price-${form.assetId}-${form.type}`}
+                      type="number" step="any" min="0"
+                      value={form.price}
+                      onChange={e => {
+                        set('price', e.target.value)
+                        set('quantity', '1')
+                      }}
+                      placeholder={
+                        selectedAsset?.class === 'property' ? 'e.g. 350000' :
+                        selectedAsset?.class === 'vehicles' ? 'e.g. 25000'  :
+                        'e.g. 5000'
+                      }
+                      required
+                      autoFocus={!isEdit && !!form.assetId}
+                    />
+                  </div>
+                )
+              }
+              return (
+                <div className="form-row">
+                  <div className="form-group mb-0">
+                    <label>
+                      {selectedAsset?.class === 'stocks'     ? '# of Shares *' :
+                       selectedAsset?.class === 'crypto'     ? '# of Coins *' :
+                       selectedAsset?.class === 'cash'       ? 'Amount *' :
+                       selectedAsset?.class === 'bonds'      ? 'Face Value / Units *' :
+                       selectedAsset?.class === 'commodities'? '# of Units (oz/barrels) *' :
+                       'Quantity *'}
+                    </label>
+                    <input
+                      key={`qty-${form.assetId}-${form.type}`}
+                      type="number" step="any" min="0"
+                      value={form.quantity}
+                      onChange={e => set('quantity', e.target.value)}
+                      placeholder="e.g. 10"
+                      required={isBuySell}
+                      autoFocus={!isEdit && !!form.assetId}
+                    />
+                  </div>
+                  {!isStaking && (
+                    <div className="form-group mb-0">
+                      <label>Price per {selectedAsset?.class === 'cash' ? 'Unit' : 'Share'} ({selectedAsset?.currency || '—'}) *</label>
+                      <input
+                        type="number" step="any" min="0"
+                        value={form.price}
+                        onChange={e => set('price', e.target.value)}
+                        placeholder={selectedAsset?.class === 'cash' ? '1' : 'e.g. 185.50'}
+                        required={isBuySell}
+                      />
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             {/* Outflow types — expense / liability_payment / mortgage_payment.
                 Stores the amount in BOTH price and totalValue so downstream

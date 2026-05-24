@@ -7,12 +7,15 @@ import {
 
 const CLASS_LABEL = Object.fromEntries(ASSET_CLASSES.map(c => [c.value, c.label]))
 import TransactionModal from './modals/TransactionModal.jsx'
+import CsvImportModal from './modals/CsvImportModal.jsx'
 import CurrencyToggle from './CurrencyToggle.jsx'
 
 export default function Transactions() {
   const { data, deleteTransaction } = usePortfolio()
   const [editingTxn, setEditingTxn] = useState(null)
+  const [prefillTxn, setPrefillTxn] = useState(null) // for "log again"
   const [showModal, setShowModal] = useState(false)
+  const [showCsvModal, setShowCsvModal] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(null)
 
   const [filterClass, setFilterClass] = useState('all')
@@ -73,6 +76,13 @@ export default function Transactions() {
           <CurrencyToggle />
           <button className="btn btn-secondary btn-sm" onClick={() => setShowRealized(r => !r)}>
             {showRealized ? 'Hide' : 'Show'} Realized P&L
+          </button>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => setShowCsvModal(true)}
+            title="Import a CSV exported from your broker"
+          >
+            ⤓ Import CSV
           </button>
           <button className="btn btn-primary btn-sm" onClick={() => { setEditingTxn(null); setShowModal(true) }}>
             + Add Transaction
@@ -186,6 +196,11 @@ export default function Transactions() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 4 }}>
+                        <button
+                          className="btn btn-xs btn-ghost"
+                          onClick={() => { setPrefillTxn(t); setShowModal(true) }}
+                          title="Log again — pre-fills a new transaction with these values"
+                        >↻</button>
                         <button className="btn btn-xs btn-ghost" onClick={() => { setEditingTxn(t); setShowModal(true) }}>✎</button>
                         <button className="btn btn-xs btn-danger" onClick={() => setConfirmDelete(t)}>✕</button>
                       </div>
@@ -222,8 +237,13 @@ export default function Transactions() {
       {showModal && (
         <TransactionModal
           transaction={editingTxn || undefined}
-          onClose={() => { setShowModal(false); setEditingTxn(null) }}
+          prefill={!editingTxn ? prefillTxn || undefined : undefined}
+          onClose={() => { setShowModal(false); setEditingTxn(null); setPrefillTxn(null) }}
         />
+      )}
+
+      {showCsvModal && (
+        <CsvImportModal onClose={() => setShowCsvModal(false)} />
       )}
     </div>
   )

@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 import { usePortfolio } from '../context/PortfolioContext.jsx'
-import { formatCurrency, INCOME_TYPES, annualizedReturn } from '../utils/calculations.js'
+import { formatCurrency, INCOME_TYPES, annualizedReturn, localISO } from '../utils/calculations.js'
 import AssetModal from './modals/AssetModal.jsx'
 import TransactionModal from './modals/TransactionModal.jsx'
 import AssetDetailModal from './modals/AssetDetailModal.jsx'
+import AssetDeleteModal from './modals/AssetDeleteModal.jsx'
 import CurrencyToggle from './CurrencyToggle.jsx'
 
 export default function Property({ onNavigate }) {
@@ -144,9 +145,11 @@ export default function Property({ onNavigate }) {
             const annualReturnPct = yearsHeld >= 0.25 && h.costBasisNative > 0
               ? annualizedReturn(h.costBasisNative, h.currentValueNative, yearsHeld)
               : null
-            // Annualized rent — sum the past 12 months of rental_income txns
+            // Annualized rent — sum the past 12 months of rental_income txns.
+            // localISO so the 12-month window aligns with the user's calendar
+            // (txn.date is a local-day string, so toISOString could shift by 1).
             const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 1)
-            const cutoffISO = cutoff.toISOString().slice(0, 10)
+            const cutoffISO = localISO(cutoff)
             const annualRent = rentalTxns
               .filter(t => t.date >= cutoffISO)
               .reduce((s, t) => s + (parseFloat(t.totalValue) || parseFloat(t.price) || 0), 0)
@@ -344,26 +347,24 @@ export default function Property({ onNavigate }) {
       )}
       {detailHolding && <AssetDetailModal holding={detailHolding} onClose={() => setDetailHolding(null)} />}
       {confirmDelete && (
-        <div className="modal-backdrop">
-          <div className="modal" style={{ maxWidth: 440 }}>
-            <div className="modal-header">
-              <span className="modal-title">Delete Property</span>
-              <button className="modal-close" onClick={() => setConfirmDelete(null)}>×</button>
-            </div>
-            <div className="modal-body">
-              <p>Delete <strong>{confirmDelete.name}</strong> and all of its transactions
-                (revaluations, rental income, purchase)? You can undo this from the toast that appears below.</p>
-              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
-                Tip: if you sold this property, use <strong>💰 Sell</strong> instead so realized
-                P&amp;L is preserved. Deleting also removes any auto-linked mortgage liability.
-              </p>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setConfirmDelete(null)}>Cancel</button>
-              <button className="btn btn-danger" onClick={() => { deleteAsset(confirmDelete.id); setConfirmDelete(null) }}>Delete</button>
-            </div>
-          </div>
-        </div>
+        <AssetDeleteModal
+          holding={confirmDelete}
+          onClose={() => setConfirmDelete(null)}
+          onSellInstead={({ type, quantity, price }) => {
+            // Property's existing "Sell" flow goes through setSellModalAssetId
+            // (which opens TransactionModal with preselectedType='sell'). We
+            // reuse that here so the sell logic stays in one place rather
+            // than diverging — the user gets the same form they'd see
+            // clicking the 💰 Sell action on the row.
+            setSellModalAssetId(confirmDelete.id)
+            setConfirmDelete(null)
+            // type/quantity/price are computed by AssetDeleteModal but
+            // intentionally unused here — the existing sell modal already
+            // pre-fills qty=1 for a property and prompts for the sale price.
+            void type; void quantity; void price
+          }}
+          onDelete={() => { deleteAsset(confirmDelete.id); setConfirmDelete(null) }}
+        />
       )}
     </div>
   )

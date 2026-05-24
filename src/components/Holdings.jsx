@@ -10,6 +10,7 @@ const CLASS_LABEL = Object.fromEntries(ASSET_CLASSES.map(c => [c.value, c.label]
 import AssetModal from './modals/AssetModal.jsx'
 import TransactionModal from './modals/TransactionModal.jsx'
 import AssetDetailModal from './modals/AssetDetailModal.jsx'
+import AssetDeleteModal from './modals/AssetDeleteModal.jsx'
 
 export default function Holdings({ onNavigate }) {
   const {
@@ -20,6 +21,10 @@ export default function Holdings({ onNavigate }) {
   const [showAssetModal, setShowAssetModal] = useState(false)
   const [editingAsset, setEditingAsset] = useState(null)
   const [txnModalAssetId, setTxnModalAssetId] = useState(null)
+  // When the user picks "Sell first" in the delete dialog, we route through
+  // TransactionModal's prefill path with this object. Carries assetId, type,
+  // quantity and price so the form opens ready to submit. Cleared on close.
+  const [txnModalPrefill, setTxnModalPrefill] = useState(null)
   const [filterClass, setFilterClass] = useState('all')
   const [search, setSearch] = useState('')
   const [manualPrices, setManualPrices] = useState({})
@@ -279,19 +284,38 @@ export default function Holdings({ onNavigate }) {
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                         {h.symbol && <span>{h.symbol}</span>}
                         {fractional && (
-                          <span title="Fractional ownership — value scaled to your share" style={{
-                            marginLeft: h.symbol ? 6 : 0,
-                            padding: '1px 5px',
-                            background: 'var(--accent-dim)', color: 'var(--accent)',
-                            borderRadius: 3, fontWeight: 600
-                          }}>
+                          <span
+                            title={
+                              (h.class === 'business' || h.class === 'private_equity')
+                                ? `Owns ${h.ownershipPct.toFixed(0)}% of the company — value shown is your stake`
+                                : 'Fractional ownership — value scaled to your share'
+                            }
+                            style={{
+                              marginLeft: h.symbol ? 6 : 0,
+                              padding: '1px 5px',
+                              background: 'var(--accent-dim)', color: 'var(--accent)',
+                              borderRadius: 3, fontWeight: 600
+                            }}
+                          >
                             {h.ownershipPct.toFixed(0)}%
                           </span>
                         )}
                       </div>
                     </td>
                     <td className="col-class"><span className={`badge badge-${h.class}`}>{CLASS_LABEL[h.class] || h.class}</span></td>
-                    <td className="text-right muted col-qty">{formatNumber(h.quantity)}</td>
+                    <td className="text-right muted col-qty">{
+                      // Business / private_equity in lump-sum mode encode the
+                      // investment amount in `quantity` with price=1, so the
+                      // qty column would otherwise display the dollar amount
+                      // as if it were a unit count. Detect via avgCost ≈ 1
+                      // (share-count mode would have a real per-share price)
+                      // and show "—" instead.
+                      ((h.class === 'business' || h.class === 'private_equity') &&
+                       h.avgCostNative != null && Math.abs(h.avgCostNative - 1) < 0.0001 &&
+                       h.quantity > 1)
+                        ? '—'
+                        : formatNumber(h.quantity)
+                    }</td>
                     <td className="text-right col-price" onClick={e => e.stopPropagation()}>
                       {needsPrice ? (
                         <div className="price-inline-wrap" style={{ justifyContent: 'flex-end' }}>
@@ -348,28 +372,25 @@ export default function Holdings({ onNavigate }) {
         </div>
       )}
 
-      {/* Confirm delete */}
+      {/* Two-option delete confirmation. The "Sell first" branch routes to
+          TransactionModal via prefill so realized P&L is captured before the
+          asset record disappears. */}
       {confirmDelete && (
-        <div className="modal-backdrop">
-          <div className="modal" style={{ maxWidth: 400 }}>
-            <div className="modal-header">
-              <span className="modal-title">Delete Asset</span>
-              <button className="modal-close" onClick={() => setConfirmDelete(null)}>×</button>
-            </div>
-            <div className="modal-body">
-              <p>Delete <strong>{confirmDelete.name}</strong> and all its transactions? You can undo this from the toast that appears below.</p>
-              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
-                Tip: if you sold this asset, don't delete it — use a Sell transaction instead so the realized P&L is preserved.
-              </p>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setConfirmDelete(null)}>Cancel</button>
-              <button className="btn btn-danger" onClick={() => { deleteAsset(confirmDelete.id); setConfirmDelete(null) }}>
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
+        <AssetDeleteModal
+          holding={confirmDelete}
+          onClose={() => setConfirmDelete(null)}
+          onSellInstead={({ type, quantity, price }) => {
+            setTxnModalPrefill({
+              assetId: confirmDelete.id,
+              type,
+              quantity,
+              price,
+              totalValue: quantity * price,
+            })
+            setConfirmDelete(null)
+          }}
+          onDelete={() => { deleteAsset(confirmDelete.id); setConfirmDelete(null) }}
+        />
       )}
 
       {showAssetModal && <AssetModal onClose={() => setShowAssetModal(false)} />}
@@ -379,6 +400,12 @@ export default function Holdings({ onNavigate }) {
         <TransactionModal
           preselectedAssetId={txnModalAssetId}
           onClose={() => setTxnModalAssetId(null)}
+        />
+      )}
+      {txnModalPrefill && (
+        <TransactionModal
+          prefill={txnModalPrefill}
+          onClose={() => setTxnModalPrefill(null)}
         />
       )}
     </div>

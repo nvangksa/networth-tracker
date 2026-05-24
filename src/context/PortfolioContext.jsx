@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   calculateHoldings, calculateNetWorth, getAllocationByClass,
-  getTotalPassiveIncome, getPassiveIncomeSince, generateId, todayISO, CURRENCIES,
+  getTotalPassiveIncome, getPassiveIncomeSince, generateId, todayISO, localISO, CURRENCIES,
   getFxRate,
 } from '../utils/calculations.js'
 import { fetchPrices, fetchPricesFree, fetchAllFxRates, fetchFxRatesFree, fetchFxRatesYahoo, buildHardcodedFxCache, isCacheStale, exportCSV, parseCSV } from '../utils/api.js'
@@ -244,17 +244,30 @@ export function PortfolioProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [marketSymsKey, loading])
 
-  // Refresh free FX rates when base currency changes
+  // Refresh free FX rates when base currency changes.
+  //
+  // CRITICAL: we re-fetch BOTH base-anchored and USD-anchored free rates and
+  // re-seed fallback for both anchors. The earlier version dropped every
+  // `source: 'free'` entry from cache without re-fetching USD-anchored ones,
+  // which silently broke cross-pair triangulation (e.g. AUD → JPY through
+  // USD) until the next manual Refresh Prices click. After a base-currency
+  // change to e.g. IDR you'd see SGD→JPY collapse to the 1:1 fallback.
   useEffect(() => {
     if (loading) return
     const base = data.settings.baseCurrency
     let cancelled = false
     ;(async () => {
       const fallback = buildHardcodedFxCache(base)
-      const free = await fetchFxRatesFree(base)
+      const fallbackUsd = base === 'USD' ? {} : buildHardcodedFxCache('USD')
+      const [free, freeUsd] = await Promise.all([
+        fetchFxRatesFree(base),
+        base === 'USD' ? Promise.resolve(null) : fetchFxRatesFree('USD'),
+      ])
       if (cancelled) return
-      const next = { ...fallback, ...(free || {}) }
-      // Keep twelve-data rates that already exist
+      const next = { ...fallback, ...fallbackUsd, ...(freeUsd || {}), ...(free || {}) }
+      // Keep yahoo / twelve-data rates that already exist (they're more
+      // accurate than the free er-api fallback). 'fallback' and 'free' get
+      // overwritten by the freshly fetched set above.
       for (const [k, v] of Object.entries(data.fxCache || {})) {
         if (v?.source !== 'fallback' && v?.source !== 'free') next[k] = v
       }
@@ -272,7 +285,12 @@ export function PortfolioProvider({ children }) {
   useEffect(() => { refreshPricesRef.current = refreshPrices }, [refreshPrices])
   useEffect(() => {
     if (!data.settings.autoRefresh) return
-    const timer = setInterval(() => refreshPricesRef.current(), 3_600_000)
+    // Pass force=true so the hourly tick always fetches fresh prices.
+    // Without it, `refreshPrices()` only re-fetches symbols whose cache is
+    // older than `isCacheStale`'s 1 hour threshold. The interval fires at
+    // ≈1 h, so the staleness check is a near-coin-flip on whether anything
+    // gets re-fetched — half the auto-refresh ticks did nothing.
+    const timer = setInterval(() => refreshPricesRef.current({ force: true }), 3_600_000)
     return () => clearInterval(timer)
   }, [data.settings.autoRefresh])
 
@@ -286,10 +304,15 @@ export function PortfolioProvider({ children }) {
       const { totalAssetsBase, totalLiabilitiesBase, netWorthBase } = calculateNetWorth(holdings, data.liabilities, data.fxCache, data.settings.baseCurrency)
       setData(prev => {
         const existing = prev.snapshots.find(s => s.date === today)
+        // Float-tolerant equality. Exact === lets sub-cent FX drift trigger a
+        // snapshot rewrite → save → effect re-fire loop. 0.5 of the base
+        // currency's smallest unit is well below display precision so this
+        // can't visibly hide changes the user would care about.
+        const close = (a, b) => Math.abs((a || 0) - (b || 0)) < 0.5
         if (existing &&
-            existing.netWorth === netWorthBase &&
-            existing.totalAssets === totalAssetsBase &&
-            existing.totalLiabilities === totalLiabilitiesBase) return prev
+            close(existing.netWorth, netWorthBase) &&
+            close(existing.totalAssets, totalAssetsBase) &&
+            close(existing.totalLiabilities, totalLiabilitiesBase)) return prev
         // Don't clobber a snapshot the user explicitly saved today — they may
         // have captured a specific moment (e.g. before a large transaction)
         // and the auto-recompute would erase that intent.
@@ -345,7 +368,9 @@ export function PortfolioProvider({ children }) {
   const pastYearPassiveIncome = useMemo(() => {
     const cutoff = new Date()
     cutoff.setFullYear(cutoff.getFullYear() - 1)
-    const since = cutoff.toISOString().slice(0, 10)
+    // localISO so the cutoff lines up with transaction dates (stored as local
+    // calendar strings) — toISOString shifts by a day for users west of UTC.
+    const since = localISO(cutoff)
     return getPassiveIncomeSince(data.transactions, data.fxCache, data.settings.baseCurrency, data.assets, since)
   }, [data.transactions, data.fxCache, data.settings.baseCurrency, data.assets])
 

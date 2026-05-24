@@ -9,9 +9,10 @@ import { useTheme, THEMES } from '../hooks/useTheme.js'
 // page background, the second is the accent — gives an instant sense of
 // each theme's mood without rendering a full mockup.
 const THEME_PREVIEW = {
-  light:  { bg: '#F1ECDF', accent: '#1F6C58' },
-  modern: { bg: '#F7F8FA', accent: '#4F46E5' },
-  dark:   { bg: '#0F1115', accent: '#4FBE9A' },
+  light:    { bg: '#F1ECDF', accent: '#1F6C58' },
+  modern:   { bg: '#F7F8FA', accent: '#4F46E5' },
+  dark:     { bg: '#0F1115', accent: '#4FBE9A' },
+  midnight: { bg: '#0D1320', accent: '#C79C59' },
 }
 
 export default function Settings() {
@@ -360,7 +361,7 @@ export default function Settings() {
   )
 }
 
-// Theme picker — shows all three themes side-by-side with a two-tone swatch
+// Theme picker — shows all four themes side-by-side with a two-tone swatch
 // per option (page background + accent). Selected theme gets an accent ring.
 // Clicking applies immediately so the user sees the change in-context; we
 // don't make them hit Save first because theme is a personal preference
@@ -372,7 +373,10 @@ function ThemePicker() {
       <div className="card-header">
         <span className="card-title">Appearance</span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+      {/* Auto-fit so a future fifth theme doesn't require a layout edit, and
+          mobile widths collapse to two-up rather than squeezing four into
+          one row. Min-width 130px keeps each tile readable. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
         {THEMES.map(t => {
           const active = theme === t.id
           const swatch = THEME_PREVIEW[t.id]

@@ -162,24 +162,32 @@ export default function Sidebar({ active, onNavigate, collapsed, onToggleCollaps
           <span className="nav-icon">{ICONS.settings}</span>
           {!collapsed && <span className="nav-label">Settings</span>}
         </div>
-        {/* Sidebar theme toggle cycles through all three themes (Paper Light
-            → Modern Light → Dark → Paper Light). Icon + label reflect the
-            current theme so users always see what's active rather than what
-            tapping will do. Settings has a proper picker for finer control. */}
-        <div
-          className="sidebar-nav-item"
-          onClick={toggle}
-          title={`Theme: ${
-            theme === 'dark' ? 'Dark' : theme === 'modern' ? 'Modern Light' : 'Paper Light'
-          } — click to cycle`}
-        >
-          <span className="nav-icon">{theme === 'dark' ? ICONS.moon : ICONS.sun}</span>
-          {!collapsed && (
-            <span className="nav-label">
-              {theme === 'dark' ? 'Dark' : theme === 'modern' ? 'Modern' : 'Paper'}
-            </span>
-          )}
-        </div>
+        {/* Sidebar theme toggle cycles through all four themes (Paper Light
+            → Modern Light → Dark → Midnight Library → Paper Light). Icon +
+            label reflect the current theme so users always see what's active
+            rather than what tapping will do. Settings has a proper picker for
+            finer control. */}
+        {(() => {
+          const isDarkFamily = theme === 'dark' || theme === 'midnight'
+          const fullLabel = theme === 'dark' ? 'Dark'
+            : theme === 'midnight' ? 'Midnight Library'
+            : theme === 'modern' ? 'Modern Light'
+            : 'Paper Light'
+          const shortLabel = theme === 'dark' ? 'Dark'
+            : theme === 'midnight' ? 'Midnight'
+            : theme === 'modern' ? 'Modern'
+            : 'Paper'
+          return (
+            <div
+              className="sidebar-nav-item"
+              onClick={toggle}
+              title={`Theme: ${fullLabel} — click to cycle`}
+            >
+              <span className="nav-icon">{isDarkFamily ? ICONS.moon : ICONS.sun}</span>
+              {!collapsed && <span className="nav-label">{shortLabel}</span>}
+            </div>
+          )
+        })()}
       </div>
 
       {!collapsed && (

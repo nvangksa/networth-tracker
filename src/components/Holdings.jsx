@@ -395,7 +395,13 @@ export default function Holdings({ onNavigate }) {
 
       {showAssetModal && <AssetModal onClose={() => setShowAssetModal(false)} />}
       {editingAsset && <AssetModal asset={editingAsset} onClose={() => setEditingAsset(null)} />}
-      {detailHolding && <AssetDetailModal holding={detailHolding} onClose={() => setDetailHolding(null)} />}
+      {detailHolding && (
+        <AssetDetailModal
+          holding={detailHolding}
+          onClose={() => setDetailHolding(null)}
+          onEdit={(h) => setEditingAsset(h)}
+        />
+      )}
       {txnModalAssetId && (
         <TransactionModal
           preselectedAssetId={txnModalAssetId}

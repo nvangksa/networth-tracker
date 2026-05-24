@@ -345,7 +345,13 @@ export default function Property({ onNavigate }) {
           onClose={() => setSellModalAssetId(null)}
         />
       )}
-      {detailHolding && <AssetDetailModal holding={detailHolding} onClose={() => setDetailHolding(null)} />}
+      {detailHolding && (
+        <AssetDetailModal
+          holding={detailHolding}
+          onClose={() => setDetailHolding(null)}
+          onEdit={(h) => setEditingAsset(h)}
+        />
+      )}
       {confirmDelete && (
         <AssetDeleteModal
           holding={confirmDelete}

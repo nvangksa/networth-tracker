@@ -20,7 +20,7 @@ const SECTOR_COLORS = [
 ]
 
 export default function Stocks({ onNavigate }) {
-  const { holdings, data, editAsset } = usePortfolio()
+  const { holdings, data, editAsset, refreshPrices, priceLoading } = usePortfolio()
   const { theme } = useTheme()
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
@@ -31,6 +31,42 @@ export default function Stocks({ onNavigate }) {
   const [showTxnModal, setShowTxnModal] = useState(false)
   const [txnAssetId, setTxnAssetId] = useState(null)
   const cur = data.settings.baseCurrency
+
+  // Oldest cached market-price timestamp → "Xm ago" hint on the Refresh button.
+  // Scoped strictly to symbols this button actually refreshes (market assets
+  // with a symbol). Otherwise a stale manually-set price on a non-market
+  // asset could surface as "Oldest cached price" and clicking Refresh
+  // wouldn't move the needle, since the button doesn't touch those entries.
+  const oldestPriceTs = useMemo(() => {
+    const marketSymbols = new Set(
+      data.assets
+        .filter(a => ['stocks', 'crypto', 'commodities'].includes(a.class) && a.symbol)
+        .map(a => a.symbol)
+    )
+    const timestamps = Object.entries(data.pricesCache || {})
+      .filter(([sym]) => marketSymbols.has(sym))
+      .map(([, p]) => p?.timestamp)
+      .filter(Boolean)
+    if (!timestamps.length) return null
+    return Math.min(...timestamps)
+  }, [data.pricesCache, data.assets])
+  // Tick a state value every 30 s so the relative age label refreshes
+  // ("just now" → "1m ago" → "2m ago") without waiting for an unrelated
+  // re-render. Cheap: one no-op setState per half-minute while the page
+  // is open, and the interval clears when no cache exists yet.
+  const [, setAgeTick] = useState(0)
+  useEffect(() => {
+    if (oldestPriceTs == null) return
+    const id = setInterval(() => setAgeTick(n => n + 1), 30_000)
+    return () => clearInterval(id)
+  }, [oldestPriceTs])
+  const ageLabel = oldestPriceTs == null ? null : (() => {
+    const mins = Math.floor((Date.now() - oldestPriceTs) / 60000)
+    if (mins < 1) return 'just now'
+    if (mins < 60) return `${mins}m ago`
+    if (mins < 1440) return `${Math.floor(mins / 60)}h ago`
+    return `${Math.floor(mins / 1440)}d ago`
+  })()
 
   // Markets = stocks + crypto. Crypto is auto-sectored as "Cryptocurrency".
   const markets = useMemo(
@@ -246,6 +282,19 @@ export default function Stocks({ onNavigate }) {
           <CurrencyToggle />
           <button
             className="btn btn-secondary btn-sm"
+            onClick={() => refreshPrices({ force: true })}
+            disabled={priceLoading}
+            title={ageLabel ? `Oldest cached price: ${ageLabel}` : 'No prices cached yet'}
+          >
+            {priceLoading ? <span className="spinner" style={{ width: 12, height: 12 }} /> : '↻'} Prices
+            {ageLabel && (
+              <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 6, fontWeight: 400 }}>
+                · {ageLabel}
+              </span>
+            )}
+          </button>
+          <button
+            className="btn btn-secondary btn-sm"
             onClick={() => onNavigate?.('realized', { from: 'stocks', filterClass: 'markets' })}
             title="See realized P&L from sold stocks & crypto"
           >
@@ -433,7 +482,13 @@ export default function Stocks({ onNavigate }) {
 
       {showAssetModal && <AssetModal onClose={() => setShowAssetModal(false)} />}
       {editingHolding && <AssetModal asset={editingHolding} onClose={() => setEditingHolding(null)} />}
-      {detailHolding && <AssetDetailModal holding={detailHolding} onClose={() => setDetailHolding(null)} />}
+      {detailHolding && (
+        <AssetDetailModal
+          holding={detailHolding}
+          onClose={() => setDetailHolding(null)}
+          onEdit={(h) => setEditingHolding(h)}
+        />
+      )}
       {showTxnModal && <TransactionModal onClose={() => setShowTxnModal(false)} />}
       {txnAssetId && (
         <TransactionModal preselectedAssetId={txnAssetId} onClose={() => setTxnAssetId(null)} />

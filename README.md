@@ -31,7 +31,7 @@ Install it, open it, done. Your data is stored in your OS user-data folder and s
 - **Cash** — APY-based compound interest projection per account
 - **Reports** — balance sheet, income statement, MoM/YoY comparisons, CSV export, print-ready PDF
 - **Planning** — retirement income stress test, asset rebalancing, bond/compound interest calculator
-- **Dark / light mode**
+- **Four themes** — Paper Light, Modern Light, Dark, Midnight Library
 - **Undo** (last 10 destructive actions)
 - **Import / export** — JSON backup, CSV transactions (broker-aware header mapping)
 

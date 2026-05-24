@@ -1,11 +1,20 @@
 # Changelog
 
-## v1.1.0 — 2026-05-23
+## v1.1.0 — 2026-05-24
+
+### Added
+
+- **Midnight Library theme** — fourth color scheme alongside Paper Light, Modern Light, and Dark. Deep navy background with brass accent and paper-cream type; reads like a leather-bound ledger. Switch via Settings → Appearance or by cycling the sidebar moon icon.
+- **"Refresh Prices" shortcut on the Markets page** — one-click force refresh, with an inline "Xm ago" hint based on the oldest cached market price so you can see at a glance how fresh your data is. The age label ticks live without needing a manual page reload.
+- **Currency switcher on the Reports page header** — change reporting currency without leaving the page; the balance sheet and income statement re-render in the new currency immediately.
 
 ### Fixed
 
 - **Yahoo Finance prices and FX now load on every Windows machine.** Some users reported blank / `$0` prices after installing — the bundled Express server bound to `127.0.0.1` (IPv4) while the renderer loaded via `localhost`, which on certain Windows machines resolves to `::1` (IPv6) first. Every internal fetch silently failed. The renderer now uses the IPv4 literal so the binding and origin always match. The Yahoo User-Agent was also upgraded to a full Chrome string because the bare `Mozilla/5.0` is increasingly rate-limited at Yahoo's edge.
 - **Cash deposit / withdrawal / transfer no longer asks for "Quantity" and "Price per Unit" separately.** A single Amount field replaces both. The previous form saved with `price = 0` if the user only filled in Quantity, which then corrupted realized P&L on the withdrawal path. Matches the single-field flow that Expense and Liability Payment already used.
+- **Edit Asset from the asset detail pop-up no longer dismisses both modals on the first click.** The nested Edit form was rendered inside the detail modal's click-to-close backdrop, so any click inside the form bubbled up and dismissed both — making editing impossible from that surface. The edit modal is now opened at the page level (or rendered as a sidecar) so it captures clicks correctly.
+- **Currency-switcher dropdown is readable on dark themes.** The `<option>` items inherited the page's transparent background and rendered as white-on-white in Chromium's native popup. Each option now declares its own surface and text color so it stays legible on every theme.
+- **Default first-run theme is Modern Light** rather than Dark. Dark felt generic for the welcome view; existing users' saved choice still wins on subsequent loads.
 
 ### Changed
 

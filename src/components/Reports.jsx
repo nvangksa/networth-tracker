@@ -5,6 +5,7 @@ import {
   getFxRate, getRealizedPnLPerSale, todayISO, computeNetWorthAsOf,
   calculateAssetHolding,
 } from '../utils/calculations.js'
+import CurrencyToggle from './CurrencyToggle.jsx'
 
 // ── Date helpers ──────────────────────────────────────────────
 function pad(n) { return String(n).padStart(2, '0') }
@@ -467,6 +468,7 @@ export default function Reports() {
           <div className="page-subtitle">Balance sheet, income statement, and period comparisons</div>
         </div>
         <div className="flex gap-8 no-print" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
+          <CurrencyToggle />
           <select
             value={exportScope}
             onChange={e => setExportScope(e.target.value)}

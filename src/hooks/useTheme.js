@@ -6,9 +6,10 @@ const STORAGE_KEY = 'portfolio-theme'
 // clicking the sun/moon icon advances to the NEXT theme in this list.
 // We expose the full list so Settings can render a proper picker.
 export const THEMES = [
-  { id: 'light',  label: 'Paper Light',  description: 'Warm cream + forest green' },
-  { id: 'modern', label: 'Modern Light', description: 'Cool gray + indigo' },
-  { id: 'dark',   label: 'Dark',         description: 'Warm black + teal' },
+  { id: 'light',    label: 'Paper Light',     description: 'Warm cream + forest green' },
+  { id: 'modern',   label: 'Modern Light',    description: 'Cool gray + indigo' },
+  { id: 'dark',     label: 'Dark',            description: 'Warm black + teal' },
+  { id: 'midnight', label: 'Midnight Library', description: 'Deep navy + brass' },
 ]
 
 // Shared theme state. Previously every useTheme() instance held its own
@@ -16,12 +17,16 @@ export const THEMES = [
 // their `key={theme}` prop never changed, Chart.js kept the old palette,
 // and the user saw a half-repainted UI until reload. Now a module-level
 // subscriber set fans out every change to every mounted useTheme() caller.
+// First-run default is Modern Light — Dark felt generic for the welcome
+// view and gave a strong "yet another fintech app" vibe. Users who prefer
+// dark can switch via the sidebar moon icon or Settings; their choice
+// persists to localStorage and overrides this default on subsequent loads.
+const DEFAULT_THEME = 'modern'
 let currentTheme = (() => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    // Guard against junk values from older builds — fall back to 'dark'.
-    return THEMES.some(t => t.id === stored) ? stored : 'dark'
-  } catch { return 'dark' }
+    return THEMES.some(t => t.id === stored) ? stored : DEFAULT_THEME
+  } catch { return DEFAULT_THEME }
 })()
 const subscribers = new Set()
 
@@ -54,8 +59,8 @@ export function useTheme() {
 
   const setTheme = (next) => applyTheme(next)
   // Sidebar cycle: advance to the next theme in THEMES, wrapping around.
-  // Three taps cycles through all three. The Settings page exposes a
-  // proper picker for users who'd rather choose directly.
+  // One full loop visits every theme in THEMES order. The Settings page
+  // exposes a proper picker for users who'd rather choose directly.
   const toggle = () => {
     const i = THEMES.findIndex(t => t.id === currentTheme)
     const next = THEMES[(i + 1) % THEMES.length].id

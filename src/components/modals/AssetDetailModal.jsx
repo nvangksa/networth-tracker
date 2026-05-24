@@ -32,7 +32,15 @@ const COUPON_FREQ_LABELS = {
 // A single click-through details pop-up used on Holdings, Markets, and Property
 // pages. Shows the full derived holding (cost basis, unrealized, income),
 // every transaction for the asset, plus quick actions (edit asset, add txn).
-export default function AssetDetailModal({ holding, onClose }) {
+//
+// `onEdit(holding)` — optional. When provided, the "✎ Edit Asset" button
+// closes this modal and hands the holding back to the parent so the page's
+// own AssetModal opens at the page level — preferred on pages that already
+// manage an `editingAsset` slot, so a single edit flow stays uniform.
+// When omitted, the nested AssetModal still opens correctly (rendered as a
+// sibling of this backdrop, not a child, so its clicks don't bubble into
+// our backdrop's onClose).
+export default function AssetDetailModal({ holding, onClose, onEdit }) {
   const { data, deleteTransaction } = usePortfolio()
   const [editAsset, setEditAsset] = useState(false)
   const [addTxn, setAddTxn] = useState(false)
@@ -56,6 +64,13 @@ export default function AssetDetailModal({ holding, onClose }) {
   const pnlCls = (holding.unrealizedPnLBase || 0) >= 0 ? 'gain' : 'loss'
 
   return (
+    // Fragment so the nested modals below (AssetModal / TransactionModal /
+    // delete-txn confirm) are SIBLINGS of this backdrop, not children. When
+    // they were children, every click inside them bubbled up to our backdrop
+    // onClick and dismissed both modals before the user could interact —
+    // and patching that with stopPropagation at every nested layer is
+    // fragile. As siblings, their clicks never reach our onClose.
+    <>
     <div className="modal-backdrop" onClick={onClose}>
       <div
         className="modal"
@@ -111,7 +126,15 @@ export default function AssetDetailModal({ holding, onClose }) {
           {/* Quick actions */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
             <button className="btn btn-primary btn-sm" onClick={() => setAddTxn(true)}>+ Add Transaction</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => setEditAsset(true)}>✎ Edit Asset</button>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => {
+                if (onEdit) { onEdit(holding); onClose() }
+                else setEditAsset(true)
+              }}
+            >
+              ✎ Edit Asset
+            </button>
           </div>
 
           {/* Bond Details — visible only for class==='bonds' and only if the
@@ -256,28 +279,29 @@ export default function AssetDetailModal({ holding, onClose }) {
           <button className="btn btn-secondary" onClick={onClose}>Close</button>
         </div>
       </div>
+    </div>
 
-      {editAsset && <AssetModal asset={holding} onClose={() => setEditAsset(false)} />}
-      {addTxn && <TransactionModal preselectedAssetId={holding.id} onClose={() => setAddTxn(false)} />}
-      {editTxn && <TransactionModal transaction={editTxn} onClose={() => setEditTxn(null)} />}
-      {confirmDelTxn && (
-        <div className="modal-backdrop" onClick={e => { e.stopPropagation(); setConfirmDelTxn(null) }}>
-          <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <span className="modal-title">Delete Transaction</span>
-              <button className="modal-close" onClick={() => setConfirmDelTxn(null)}>×</button>
-            </div>
-            <div className="modal-body">
-              <p>Delete this <strong>{confirmDelTxn.type}</strong> entry from {confirmDelTxn.date}?</p>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setConfirmDelTxn(null)}>Cancel</button>
-              <button className="btn btn-danger" onClick={() => { deleteTransaction(confirmDelTxn.id); setConfirmDelTxn(null) }}>Delete</button>
-            </div>
+    {editAsset && <AssetModal asset={holding} onClose={() => setEditAsset(false)} />}
+    {addTxn && <TransactionModal preselectedAssetId={holding.id} onClose={() => setAddTxn(false)} />}
+    {editTxn && <TransactionModal transaction={editTxn} onClose={() => setEditTxn(null)} />}
+    {confirmDelTxn && (
+      <div className="modal-backdrop" onClick={() => setConfirmDelTxn(null)}>
+        <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+          <div className="modal-header">
+            <span className="modal-title">Delete Transaction</span>
+            <button className="modal-close" onClick={() => setConfirmDelTxn(null)}>×</button>
+          </div>
+          <div className="modal-body">
+            <p>Delete this <strong>{confirmDelTxn.type}</strong> entry from {confirmDelTxn.date}?</p>
+          </div>
+          <div className="modal-footer">
+            <button className="btn btn-secondary" onClick={() => setConfirmDelTxn(null)}>Cancel</button>
+            <button className="btn btn-danger" onClick={() => { deleteTransaction(confirmDelTxn.id); setConfirmDelTxn(null) }}>Delete</button>
           </div>
         </div>
-      )}
-    </div>
+      </div>
+    )}
+    </>
   )
 }
 

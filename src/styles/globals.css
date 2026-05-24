@@ -160,6 +160,56 @@
 [data-theme="modern"] .modal-backdrop { background: rgba(15, 23, 42, 0.5); }
 [data-theme="modern"] select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E"); }
 
+/* Midnight Library — deep navy + paper-cream type + brass accent.
+ * An alternative dark mode for users who find the default warm-black + teal
+ * dark generic. Reads like a leather-bound ledger rather than a SaaS shell.
+ * Gain stays in a muted green that holds against navy; loss is a softer
+ * coral (same family as default dark) so reading red/green never strains.
+ * Shadow intensities match the default dark theme so card elevation feels
+ * consistent if a user toggles back and forth.
+ */
+[data-theme="midnight"] {
+  --bg: #0D1320;
+  --surface: #111729;
+  --card: #131B2C;
+  --card-hover: #1A2236;
+  --border: #232C42;
+  --border-light: #324162;
+  --text: #E8DFC7;
+  --text-secondary: #B5AB91;
+  --text-muted: #7E7766;
+  --accent: #C79C59;
+  --accent-dim: rgba(199, 156, 89, 0.14);
+  --gain: #7FB88A;
+  --gain-dim: rgba(127, 184, 138, 0.14);
+  --loss: #D68470;
+  --loss-dim: rgba(214, 132, 112, 0.14);
+  --info: #8AB4F0;
+  --info-dim: rgba(138, 180, 240, 0.14);
+  --purple: #B89AF0;
+  --orange: #E5B384;
+  /* Same dusty-pastel series strategy as default dark, but shifted slightly
+     warmer/golder so they read as a coherent set with the brass accent
+     rather than fighting it. */
+  --series-1: #8FB5D6;
+  --series-2: #9CC4A8;
+  --series-3: #E0A593;
+  --series-4: #C3A8DC;
+  --series-5: #D9B870;
+  --series-6: #D9A0AE;
+  --series-7: #92BFB8;
+  --series-8: #C9B59A;
+  --shadow: 0 8px 32px rgba(0,0,0,0.5);
+  --shadow-soft: 0 1px 2px rgba(0,0,0,0.18), 0 8px 24px rgba(0,0,0,0.30);
+  --shadow-lift: 0 4px 10px rgba(0,0,0,0.28), 0 18px 40px rgba(0,0,0,0.40);
+  --chart-grid: rgba(232, 223, 199, 0.06);
+  --table-row-hover: rgba(232, 223, 199, 0.025);
+}
+[data-theme="midnight"] .sidebar-logo-icon { color: #0D1320; }
+[data-theme="midnight"] .btn-primary { color: #0D1320; }
+[data-theme="midnight"] .modal-backdrop { background: rgba(8, 11, 20, 0.6); }
+[data-theme="midnight"] select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23B5AB91' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E"); }
+
 [data-theme="light"] .sidebar-logo-icon { color: #000; }
 [data-theme="light"] .btn-primary { color: #fff; }
 [data-theme="light"] .modal-backdrop { background: rgba(30, 35, 41, 0.5); }
@@ -316,10 +366,35 @@ body {
 .currency-toggle select {
   background: transparent; border: none; outline: none;
   color: var(--text); font-weight: 600; font-size: 13px;
-  padding: 2px 18px 2px 2px; cursor: pointer;
+  /* Symmetric horizontal padding so the chosen code (e.g. "USD") reads as
+     centered inside the chip. The native arrow is overlaid by `text-align-last`
+     keeping the selected value visually balanced — without the centering
+     hint the dropdown arrow shoves the value left and it looks off-axis. */
+  padding: 2px 4px; cursor: pointer;
+  text-align: center;
+  text-align-last: center;
   border-radius: 0;
+  /* Hide the native caret so the layout is symmetric. The chip is already
+     a clearly-clickable rounded pill; the chevron added asymmetry without
+     adding affordance. */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: none;
+  min-width: 44px;
 }
 .currency-toggle select:focus { box-shadow: none; }
+/* The dropdown popup that opens when the user clicks the select is rendered
+   by the OS / browser shell and inherits whatever `option` style we provide.
+   Without explicit background+color, dark-mode users saw white-on-white
+   options (Chromium/Electron defaults the popup's background to the
+   element's background — transparent here — and falls back to white text
+   on white system canvas). Setting both explicitly fixes it across every
+   theme without affecting the chip styling. */
+.currency-toggle select option {
+  background: var(--surface);
+  color: var(--text);
+}
 
 /* ── Compact allocation: small donut + 2-col chip grid ───── */
 .alloc-compact {
@@ -1065,7 +1140,8 @@ textarea { resize: vertical; min-height: 60px; }
   box-shadow: var(--shadow-lift);
   animation: slideUp 0.18s ease;
 }
-[data-theme="dark"] .modal { border-color: transparent; }
+[data-theme="dark"] .modal,
+[data-theme="midnight"] .modal { border-color: transparent; }
 
 .modal-lg { max-width: 720px; }
 

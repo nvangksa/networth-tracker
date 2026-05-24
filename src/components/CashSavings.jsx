@@ -335,7 +335,13 @@ export default function CashSavings() {
         />
       )}
       {editingAsset && <AssetModal asset={editingAsset} onClose={() => setEditingAsset(null)} />}
-      {detailHolding && <AssetDetailModal holding={detailHolding} onClose={() => setDetailHolding(null)} />}
+      {detailHolding && (
+        <AssetDetailModal
+          holding={detailHolding}
+          onClose={() => setDetailHolding(null)}
+          onEdit={(h) => setEditingAsset(h)}
+        />
+      )}
       {txnAssetId === '__pick__' && (
         <TransactionModal onClose={() => setTxnAssetId(null)} />
       )}
